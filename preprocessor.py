@@ -30,17 +30,8 @@ def symbol_checker(df: pd.DataFrame) -> bool:
 
 
 def ban_symbols_with_nan(date_str: str, threshold: int = 30):
-  """
-  하루(df)에서 symbol 별 NaN row 개수를 세고,
-  threshold 이상이면 ban list에 넣는다.
-
-  banned_symbols.json 파일에 다음 구조로 저장:
-    {
-      "2025-10-01": ["BTCUSDT", "ETHUSDT"],
-      "2025-10-02": ["FOOUSDT"]
-    }
-  """
   df = pd.read_hdf(f"data/1m_raw_data/{date_str}.h5")
+
   if "symbol" not in df.columns:
     raise ValueError("'symbol' column is not found in the DataFrame.")
   if not symbol_checker(df):
@@ -48,9 +39,15 @@ def ban_symbols_with_nan(date_str: str, threshold: int = 30):
   
   banned_symbols = []
 
+  # 1) NaN row 개수 기준 ban
   for sym, g in df.groupby("symbol"):
     nan_rows = g.isna().any(axis=1).sum()
     if nan_rows >= threshold:
+      banned_symbols.append(sym)
+
+  # 2) 이름이 "USD" 로 시작하는 심볼 전부 ban
+  for sym in df["symbol"].unique():
+    if sym.startswith("USD") and sym not in banned_symbols:
       banned_symbols.append(sym)
 
   json_path = "banned_symbols.json"
