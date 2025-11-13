@@ -9,7 +9,7 @@ import os
 from collections import Counter
 
 
-def symbol_checker(df: pd.DataFrame) -> bool:
+def symbol_checker(df: pd.DataFrame, num_dates=1) -> bool:
   """
   Check all symbols have exactly 1440 rows each.
   Uses Counter on df["symbol"].
@@ -18,7 +18,7 @@ def symbol_checker(df: pd.DataFrame) -> bool:
     raise ValueError("DataFrame에 'symbol' 컬럼이 없습니다.")
 
   counts = Counter(df["symbol"])
-  invalid = {sym: cnt for sym, cnt in counts.items() if cnt != 1440}
+  invalid = {sym: cnt for sym, cnt in counts.items() if cnt != 1440 * num_dates}
 
   if invalid:
     print("[WARN] These symbols have unexpected row counts:")
@@ -85,7 +85,7 @@ def check_all_columns_valid(df: pd.DataFrame) -> bool:
     # g.isna().any().any() → 전체 DataFrame에 NaN 있으면 True
     if g.isna().any().any():
       bad_symbols.append(sym)
-
+  print(f"bad_symbols: {bad_symbols}")
   if bad_symbols:
     print("[WARN] These symbols have NaN values:")
     for sym in bad_symbols:
@@ -100,16 +100,21 @@ def fill_nan_values(df: pd.DataFrame, method: str = "forward") -> pd.DataFrame:
   numeric_cols = df.select_dtypes(include="number").columns
 
   if method == "forward":
-    df[numeric_cols] = df[numeric_cols].ffill()
+    df[numeric_cols] = (
+      df.groupby("symbol")[numeric_cols]
+      .transform(lambda x: x.ffill())
+    )
+    df[numeric_cols] = df[numeric_cols].groupby(df["symbol"]).transform(lambda x: x.bfill())
     return df
+
   else:
     raise ValueError(f"Invalid method: {method}")
 
 
-def preprocess_data(df: pd.DataFrame, method: str = "forward"):
-  if not symbol_checker(df):
+def preprocess_data(df: pd.DataFrame, method: str = "forward", num_dates=1):
+  if not symbol_checker(df, num_dates):
     raise ValueError("Symbol checker failed.")
   df = fill_nan_values(df, method)
   if not check_all_columns_valid(df):
-    raise ValueError("All columns are not valid.")
+    raise ValueError(f"All columns are not valid,")
   return df

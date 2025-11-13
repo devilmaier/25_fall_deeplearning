@@ -87,7 +87,7 @@ def x_generator(
   # universe 필터 (타깃 날짜 기준 topN)
   df = df[df["symbol"].isin(universe)].copy()
   print(df.head())
-  df = preprocess_data(df, num_dates=2)
+  df = preprocess_data(df[1440:], num_dates=2)
   print(df.head())
   df.sort_values(["symbol", "start_time_ms"], inplace=True)
   
@@ -149,3 +149,6 @@ if __name__ == "__main__":
   print(f"Saved x to {out_path}")
 # python x_generator.py --date 2025-10-01 --top 30 --data_dir data/1m_raw_data
 
+
+#TODO
+# add more features + do it with multiprocessing by dates
