@@ -18,15 +18,22 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description=(
             "Collect Binance USDT-M PERPETUAL 1m klines + premium index klines "
-            "+ 5m metrics (backfilled to 1m) for a given UTC date, "
-            "merge, and save {date}.h5"
+            "+ 5m metrics (backfilled to 1m) for a given UTC date range, "
+            "merge, and save {date}.h5 for each date."
         )
     )
+
     parser.add_argument(
-        "--date",
+        "--start_date",
         type=str,
         required=False,
-        help="UTC date (YYYY-MM-DD). Default = yesterday UTC."
+        help="UTC start date (YYYY-MM-DD). Default = yesterday UTC."
+    )
+    parser.add_argument(
+        "--end_date",
+        type=str,
+        required=False,
+        help="UTC end date (YYYY-MM-DD). Default = same as start-date."
     )
     parser.add_argument(
         "--workers",
@@ -34,12 +41,24 @@ def parse_args():
         required=False,
         help="Parallel worker processes. Default = cpu_count()."
     )
+
     args = parser.parse_args()
 
-    if args.date is None:
-        utc_now = datetime.now(timezone.utc)
-        default_day = (utc_now - timedelta(days=1)).strftime("%Y-%m-%d")
-        args.date = default_day
+    # ---------------------------------------------------------
+    # 날짜 기본값 처리 (기존 로직 스타일 유지)
+    # ---------------------------------------------------------
+    utc_now = datetime.now(timezone.utc)
+    default_day = (utc_now - timedelta(days=1)).strftime("%Y-%m-%d")
+    if args.start_date is None and args.end_date is None:
+        
+        args.start_date = default_day
+        args.end_date = default_day
+
+    # 둘 중 하나만 넣으면 오류
+    elif args.end_date is None:
+        args.end_date = default_day
+    elif args.start_date is None:
+        raise ValueError(f"{args.start_date} and {args.end_date} must be provided.")
 
     return args
 
@@ -592,31 +611,60 @@ def collect_day_all_symbols_from_binance_vision(date_str: str, max_workers=None)
 # 12. save h5
 # ---------------------------------------------------------
 def save_h5(df: pd.DataFrame, date_str: str):
-    filename = f"{date_str}.h5"
+    root_path = "/Users/minchul/Desktop/서울대/딥기/crypto_pred/data/1m_raw_data"
+    filename = f"{root_path}/{date_str}.h5"
     df.to_hdf(filename, key="data", mode="w", format="table")
     print(f"[OK] {date_str}: saved {len(df)} rows to {filename}")
 
 
 # ---------------------------------------------------------
-# 13. main
+# 13. iter_dates
+# ---------------------------------------------------------
+def _iter_dates(start_date_str: str, end_date_str: str):
+    """
+    'YYYY-MM-DD' 문자열 두 개를 받아서
+    start_date ~ end_date (둘 다 포함) 날짜 문자열을 순회.
+    """
+    start_dt = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+    end_dt = datetime.strptime(end_date_str, "%Y-%m-%d").date()
+
+    if end_dt < start_dt:
+        raise ValueError(f"end_date({end_date_str}) 가 start_date({start_date_str}) 보다 앞입니다.")
+
+    cur = start_dt
+    one_day = timedelta(days=1)
+    while cur <= end_dt:
+        yield cur.strftime("%Y-%m-%d")
+        cur += one_day
+
+
+# ---------------------------------------------------------
+# 14. main
 # ---------------------------------------------------------
 def main():
-    args = parse_args()
-    date_str = args.date
-    max_workers = args.workers if args.workers is not None else None
+  args = parse_args()
+  start_date_str = args.start_date
+  end_date_str = args.end_date
+  max_workers = args.workers if args.workers is not None else None
+
+  print(f"[INFO] Dumping from {start_date_str} to {end_date_str} (inclusive)")
+
+  for date_str in _iter_dates(start_date_str, end_date_str):
+    print(f"[INFO] Fetching {date_str} ...")
 
     df_day = collect_day_all_symbols_from_binance_vision(
-        date_str=date_str,
-        max_workers=max_workers,
+      date_str=date_str,
+      max_workers=max_workers,
     )
 
     if df_day.empty:
-        print(f"[WARN] {date_str}: no symbols available / no data fetched")
+      print(f"[WARN] {date_str}: no symbols available / no data fetched")
     else:
-        save_h5(df_day, date_str)
+      save_h5(df_day, date_str)
+      print(f"[INFO] Saved HDF5 for {date_str}")
 
 
 if __name__ == "__main__":
     main()
 
-#usage: python raw_data_fetcher.py --date 2025-10-01 --workers 16
+#usage: python raw_data_fetcher.py --start-date 2025-10-01 --end-date 2025-10-07 --workers 16
