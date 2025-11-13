@@ -6,7 +6,7 @@ import pandas as pd
 import argparse
 from preprocessor import preprocess_data
 
-# data name: {window}_{type}_{neut} ex) 30m_O2C_neut, 30m_O2C, etc.
+# data name: x_{window}_{type}_{neut} ex) x_30m_O2C_neut, x_30m_O2C, etc.
 
 WINDOW_LIST = [1, 5, 15, 30, 60, 120, 240, 480, 720, 1440]
 TYPE_LIST = ["O2C", "O2H", "O2L", "H2C", "L2C"]
@@ -87,7 +87,7 @@ def x_generator(
   # universe 필터 (타깃 날짜 기준 topN)
   df = df[df["symbol"].isin(universe)].copy()
   print(df.head())
-  df = preprocess_data(df[1440:], num_dates=2)
+  df = preprocess_data(df, num_dates=2)
   print(df.head())
   df.sort_values(["symbol", "start_time_ms"], inplace=True)
   
@@ -100,6 +100,7 @@ def x_generator(
     feat_list.append(feat_w)
 
   feat_df = pd.concat(feat_list, axis=1)
+  feat_df = feat_df.add_prefix("x_")
   full = pd.concat([df, feat_df], axis=1)
   
   if add_neutralized:
