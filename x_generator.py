@@ -9,7 +9,8 @@ from preprocessor import preprocess_data
 # data name: x_{window}_{type}_{neut} ex) x_30m_O2C_neut, x_30m_O2C, etc.
 
 WINDOW_LIST = [1, 5, 15, 30, 60, 120, 240, 480, 720, 1440]
-TYPE_LIST = ["O2C", "O2H", "O2L", "H2C", "L2C"]
+TYPE_LIST = ["O2C", "O2H", "O2L", "H2C", "L2C",
+            "H2L_Vol", "OI_Chg", "AvgTrade", "WhaleGap", "NetTaker", "C2VWAP", "Premium"]
 
 
 def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
@@ -25,7 +26,14 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   """
 
   g = g.sort_values("start_time_ms")
-  roll = g[["open", "high", "low", "close"]].rolling(window=window, min_periods=window)
+  target_cols = [
+      c for c in [
+        "open", "high", "low", "close", "quote_volume", "num_trades", "taker_buy_quote",
+        "mt_oi", "mt_top_ls_ratio", "mt_ls_ratio_cnt", "pm_close"
+      ] if c in cols
+  ]
+    
+  roll = g[target_cols].rolling(window=window, min_periods=window)
 
   o_first = roll["open"].apply(lambda x: x.iloc[0])
   c_last = roll["close"].apply(lambda x: x.iloc[-1])
@@ -38,6 +46,55 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   o2l = (l_min / o_first - 1.0) * 10000
   h2c = (c_last / h_max - 1.0) * 10000
   l2c = (c_last / l_min - 1.0) * 10000
+  # H2L_Vol
+  h2l_vol = (h_max / l_min - 1.0) * 10000
+
+  # OI_Chg
+  if "mt_oi" in cols:
+      oi_first = roll["mt_oi"].apply(lambda x: x.iloc[0])
+      oi_last = roll["mt_oi"].apply(lambda x: x.iloc[-1])
+      oi_chg = (oi_last / oi_first - 1.0).fillna(0) * 10000
+  else:
+      oi_chg = pd.Series(np.nan, index=g.index)
+
+  # AvgTrade
+  if "quote_volume" in cols and "num_trades" in cols:
+      avg_trade = roll["quote_volume"].sum() / roll["num_trades"].sum()
+  else:
+      avg_trade = pd.Series(np.nan, index=g.index)
+
+  # WhaleGap
+  if "mt_top_ls_ratio" in cols and "mt_ls_ratio_cnt" in cols:
+      whale_gap = roll["mt_top_ls_ratio"].mean() - roll["mt_ls_ratio_cnt"].mean()
+  else:
+      whale_gap = pd.Series(np.nan, index=g.index)
+
+  # NetTaker
+  if "taker_buy_quote" in cols and "quote_volume" in cols:
+      sum_buy = roll["taker_buy_quote"].sum()
+      sum_total = roll["quote_volume"].sum()
+      sum_sell = sum_total - sum_buy
+      net_taker = (sum_buy - sum_sell) / sum_total
+  else:
+      net_taker = pd.Series(np.nan, index=g.index)
+
+  # C2VWAP
+  if "quote_volume" in cols:
+      tp = (g["high"] + g["low"] + g["close"]) / 3.0
+      pv = tp * g["quote_volume"]
+      sum_pv = pv.rolling(window=window, min_periods=window).sum()
+      sum_vol = roll["quote_volume"].sum()
+      vwap = sum_pv / sum_vol
+      c2vwap = (c_last / vwap - 1.0) * 10000
+  else:
+      c2vwap = pd.Series(np.nan, index=g.index)
+
+  # Premium
+  if "pm_close" in cols:
+      premium = roll["pm_close"].mean()
+  else:
+      premium = pd.Series(np.nan, index=g.index)
+
 
   out = pd.DataFrame(
     {
@@ -46,6 +103,13 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       f"{window}m_O2L": o2l,
       f"{window}m_H2C": h2c,
       f"{window}m_L2C": l2c,
+      f"{window}m_H2L_Vol": h2l_vol,
+      f"{window}m_OI_Chg": oi_chg,
+      f"{window}m_AvgTrade": avg_trade,
+      f"{window}m_WhaleGap": whale_gap,
+      f"{window}m_NetTaker": net_taker,
+      f"{window}m_C2VWAP": c2vwap,
+      f"{window}m_Premium": premium,
     },
     index=g.index,
   )
