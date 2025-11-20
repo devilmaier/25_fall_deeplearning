@@ -5,6 +5,7 @@ from this import d
 import pandas as pd
 import argparse
 from preprocessor import preprocess_data
+import numpy as np
 
 # data name: x_{window}_{type}_{neut} ex) x_30m_O2C_neut, x_30m_O2C, etc.
 
@@ -26,6 +27,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   """
 
   g = g.sort_values("start_time_ms")
+  cols = g.columns.tolist()
   target_cols = [
       c for c in [
         "open", "high", "low", "close", "quote_volume", "num_trades", "taker_buy_quote",
@@ -96,6 +98,35 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       premium = pd.Series(np.nan, index=g.index)
 
 
+  by_sym_full = g.groupby("symbol", group_keys=False)
+
+  # Close diff rate per minute
+  g[f"{window}x_close_diff_rate"] = by_sym_full["close"].pct_change(window).fillna(0.0)
+  
+  # Ratio skew (상위 - 전체 의 포지션 집중도)
+  g["x_ratio_skew"] = g["mt_top_ls_ratio"] - g["mt_ls_ratio"]
+
+  def _rolling_zscore(s: pd.Series, w: int, minp=None) -> pd.Series:
+      if minp is None:
+          minp = max(5, w)
+      r = s.rolling(w, min_periods=minp)
+      return (s - r.mean()) / (r.std(ddof=0) + 1e-9)
+
+  # Z-scores of ratio skew
+  g[f"{window}x_ratio_skew_z"] = by_sym_full["x_ratio_skew"].transform(
+      lambda s: _rolling_zscore(s, window)
+  )
+
+  # Crowding Pressure 
+  g[f"{window}x_crowding_pressure"] = np.tanh(3.0 * g[f"{window}x_ratio_skew_z"])
+
+  # OI z-score and momentum 
+  g[f"{window}x_oi_z"] = by_sym_full["mt_oi"].transform(lambda s: _rolling_zscore(s, window))
+
+  # Regime & interaction
+  g[f"{window}x_price_oi_regime"] = np.sign(g[f"{window}x_close_diff_rate"]) * np.sign(g["x_mt_oi_diff_rate"])
+  g[f"{window}x_oi_x_skew"] = g[f"{window}x_oi_z"] * g[f"{window}x_ratio_skew_z"] # oi 늘면서, skew 커진다면 더 강한 신호?
+  
   out = pd.DataFrame(
     {
       f"{window}m_O2C": o2c,
@@ -113,6 +144,21 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     },
     index=g.index,
   )
+
+  out = pd.concat([out, g[[
+      f"{window}x_close_diff_rate",
+      f"{window}x_ratio_skew",
+      f"{window}x_ratio_skew_z",
+      f"{window}_x_crowding_pressure",
+      #"x_mt_oi_diff_rate",
+      f"{window}x_oi_z",
+      #"x_oi_mom_5",
+      #"x_oi_mom_15",
+      #"x_oi_mom_30",
+      #"x_price_oi_corr_30",
+      f"{window}x_price_oi_regime",
+      f"{window}x_oi_x_skew"
+  ]]], axis=1)
 
   return out
 
