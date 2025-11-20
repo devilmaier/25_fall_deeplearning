@@ -200,6 +200,85 @@ if __name__ == "__main__":
   print(f"Saved x to {out_path}")
 # python x_generator.py --date 2025-10-01 --top 30 --data_dir data/1m_raw_data
 
+# 시각화 
+'''
+import matplotlib.pyplot as plt
+# ==========================================
+# 1. 설정 (Settings)
+# ==========================================
+symbol = "BTCUSDT"        # 시각화할 심볼
+date_str = "2025-03-01"   # 날짜
+top_n = 50
+x_path = f"data/x/{date_str}_x_top{top_n}.h5"  # 파일 경로
+
+# ==========================================
+# 2. 데이터 로드
+# ==========================================
+if os.path.exists(x_path):
+    # X 데이터 로드
+    df_x = pd.read_hdf(x_path, key="x")
+    
+    # 특정 심볼 필터링 & 시간순 정렬
+    df_plot = df_x[df_x["symbol"] == symbol].copy()
+    df_plot = df_plot.sort_values("start_time_ms")
+    
+    # 시간 축 변환 (ms -> datetime)
+    df_plot["datetime"] = pd.to_datetime(df_plot["start_time_ms"], unit="ms")
+
+    # ==========================================
+    # 3. 시각화 (Plotting)
+    # ==========================================
+    # 60분 윈도우 컬럼명 정의
+    features = [
+        "close",             # 종가
+        "x_60m_RVol",        # 실현 변동성
+        "x_60m_EffRatio",    # 효율성 지수
+        "x_60m_OI_P_Corr",   # OI-가격 상관계수
+        "x_60m_Force",       # 포스 인덱스
+        "x_60m_PctB"         # 볼린저 %B
+    ]
+    
+    titles = [
+        f"Close Price ({symbol})", 
+        "Realized Volatility (Risk)", 
+        "Efficiency Ratio (Trend Quality)", 
+        "OI-Price Correlation (Trend Strength)", 
+        "Force Index (Volume Pressure)", 
+        "Bollinger %B (Relative Position)"
+    ]
+    
+    colors = ["#333333", "blue", "green", "purple", "orange", "red"]
+
+    # 캔버스 설정 (6행 1열)
+    fig, axes = plt.subplots(nrows=6, ncols=1, figsize=(12, 20), sharex=True)
+
+    for i, ax in enumerate(axes):
+        col_name = features[i]
+        
+        if col_name in df_plot.columns:
+            ax.plot(df_plot["datetime"], df_plot[col_name], color=colors[i], linewidth=1.5)
+            ax.set_title(titles[i], fontsize=12, fontweight='bold')
+            ax.grid(True, alpha=0.3)
+            ax.legend([col_name], loc='upper right')
+            
+            # 상관계수나 Force처럼 0이 기준인 지표는 기준선 추가
+            if "Corr" in col_name or "Force" in col_name:
+                ax.axhline(0, color='black', linestyle='--', linewidth=0.8, alpha=0.5)
+                
+            # %B는 0과 1 기준선 추가
+            if "PctB" in col_name:
+                ax.axhline(0, color='gray', linestyle=':', alpha=0.5)
+                ax.axhline(1, color='gray', linestyle=':', alpha=0.5)
+        else:
+            ax.text(0.5, 0.5, f"{col_name} Not Found", ha='center', va='center')
+
+    plt.xlabel("Time (UTC)")
+    plt.tight_layout()
+    plt.show()
+    
+else:
+    print(f"파일을 찾을 수 없습니다: {x_path}")
+'''
 
 #TODO
 # add more features + do it with multiprocessing by dates
