@@ -13,7 +13,7 @@ from preprocessor import preprocess_data
 # Then cross-sectional neutralize: diff - mean(diff across universe at base t)
 # Output rows for target date base times only.
 
-WINDOW_LIST = [1, 5, 15, 30, 60]
+WINDOW_LIST = [1, 5, 15, 30, 60, 240]
 
 
 def _compute_symbol_forward_diff(g: pd.DataFrame, window: int, price_col: str) -> pd.Series:
