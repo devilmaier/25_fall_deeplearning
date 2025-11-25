@@ -22,6 +22,8 @@ TYPE_LIST = [
   "H2L_Vol", "OI_Chg", "AvgTrade", "WhaleGap", "NetTaker", "C2VWAP", "Premium",
   # added classical/technical factors
   "RVol", "EffRatio", "OI_P_Corr", "Force", "PctB",
+  
+  "Close_Diff_Rate", "RatioSkew", "RatioSkew_Z", "CrowdingPressure", "OI_Z", "PriceOIRegime", "OI_XSkew",
 ]
 
 
@@ -170,22 +172,22 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   #   크로스 섹션 / 레짐 관련 팩터
   # ============================
 
-  by_sym_full = g.groupby("symbol", group_keys=False)
-
+  # Note: g is already per-symbol data from groupby, so no need to group again
+  
   # Close diff rate per window
-  g[f"{window}x_close_diff_rate"] = by_sym_full["close"].pct_change(window).fillna(0.0)
+  g[f"{window}m_Close_Diff_Rate"] = g["close"].pct_change(window).fillna(0.0)
 
   # OI diff rate per window (없으면 0) — intermediate only
   if "mt_oi" in cols:
-    g["x_mt_oi_diff_rate"] = by_sym_full["mt_oi"].pct_change(window).fillna(0.0)
+    g["x_mt_oi_diff_rate"] = g["mt_oi"].pct_change(window).fillna(0.0)
   else:
     g["x_mt_oi_diff_rate"] = 0.0
 
   # Ratio skew (상위 - 전체 의 포지션 집중도), window 붙인 버전
   if "mt_top_ls_ratio" in cols and "mt_ls_ratio" in cols:
-    g[f"{window}x_ratio_skew"] = g["mt_top_ls_ratio"] - g["mt_ls_ratio"]
+    g[f"{window}m_RatioSkew"] = g["mt_top_ls_ratio"] - g["mt_ls_ratio"]
   else:
-    g[f"{window}x_ratio_skew"] = 0.0
+    g[f"{window}m_RatioSkew"] = 0.0
 
   def _rolling_zscore(s: pd.Series, w: int, minp=None) -> pd.Series:
     """
@@ -208,32 +210,28 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     return (s - r.mean()) / (r.std(ddof=0) + 1e-9)
 
   # Z-scores of ratio skew (window prefix 버전 사용)
-  g[f"{window}x_ratio_skew_z"] = by_sym_full[f"{window}x_ratio_skew"].transform(
-    lambda s: _rolling_zscore(s, window)
-  )
+  g[f"{window}m_RatioSkew_Z"] = _rolling_zscore(g[f"{window}m_RatioSkew"], window)
 
   # Crowding Pressure
-  g[f"{window}x_crowding_pressure"] = np.tanh(3.0 * g[f"{window}x_ratio_skew_z"])
+  g[f"{window}m_CrowdingPressure"] = np.tanh(3.0 * g[f"{window}m_RatioSkew_Z"])
 
   # OI z-score
   if "mt_oi" in cols:
-    g[f"{window}x_oi_z"] = by_sym_full["mt_oi"].transform(
-      lambda s: _rolling_zscore(s, window)
-    )
+    g[f"{window}m_OI_Z"] = _rolling_zscore(g["mt_oi"], window)
   else:
-    g[f"{window}x_oi_z"] = 0.0
+    g[f"{window}m_OI_Z"] = 0.0
 
   # Regime & interaction
-  g[f"{window}x_price_oi_regime"] = (
-    np.sign(g[f"{window}x_close_diff_rate"]) * np.sign(g["x_mt_oi_diff_rate"])
+  g[f"{window}m_PriceOIRegime"] = (
+    np.sign(g[f"{window}m_Close_Diff_Rate"]) * np.sign(g["x_mt_oi_diff_rate"])
   )
-  g[f"{window}x_oi_x_skew"] = g[f"{window}x_oi_z"] * g[f"{window}x_ratio_skew_z"]
+  g[f"{window}m_OI_XSkew"] = g[f"{window}m_OI_Z"] * g[f"{window}m_RatioSkew_Z"]
 
   # ============================
   #   최종 DataFrame 구성
   # ============================
 
-  out_main = pd.DataFrame(
+  out = pd.DataFrame(
     {
       f"{window}m_O2C": o2c,
       f"{window}m_O2H": o2h,
@@ -252,31 +250,16 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       f"{window}m_OI_P_Corr": oi_p_corr,
       f"{window}m_Force": force_idx,
       f"{window}m_PctB": pct_b,
+      f"{window}m_Close_Diff_Rate": g[f"{window}m_Close_Diff_Rate"],
+      f"{window}m_RatioSkew": g[f"{window}m_RatioSkew"],
+      f"{window}m_RatioSkew_Z": g[f"{window}m_RatioSkew_Z"],
+      f"{window}m_CrowdingPressure": g[f"{window}m_CrowdingPressure"],
+      f"{window}m_OI_Z": g[f"{window}m_OI_Z"],
+      f"{window}m_PriceOIRegime": g[f"{window}m_PriceOIRegime"],
+      f"{window}m_OI_XSkew": g[f"{window}m_OI_XSkew"],
     },
     index=g.index,
   )
-
-  # x-쪽 feature들
-  base_extra_cols = [f"{window}x_close_diff_rate"]
-  mt_extra_cols = [
-    f"{window}x_ratio_skew",
-    f"{window}x_ratio_skew_z",
-    f"{window}x_crowding_pressure",
-    f"{window}x_oi_z",
-    f"{window}x_price_oi_regime",
-    f"{window}x_oi_x_skew",
-  ]
-
-  if window == 1:
-    # 1분짜리 mt_ 기반 window feature는 feature set에서 제외
-    extra_cols = base_extra_cols
-  else:
-    extra_cols = base_extra_cols + mt_extra_cols
-
-  extra_cols = [c for c in extra_cols if c in g.columns]
-  out_extra = g[extra_cols]
-
-  out = pd.concat([out_main, out_extra], axis=1)
 
   # 1분짜리에서 완전히 드랍할 mt_ 기반 feature들
   if window == 1:
@@ -284,12 +267,12 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       f"{window}m_OI_Chg",
       f"{window}m_WhaleGap",
       f"{window}m_OI_P_Corr",
-      f"{window}x_ratio_skew",
-      f"{window}x_ratio_skew_z",
-      f"{window}x_crowding_pressure",
-      f"{window}x_oi_z",
-      f"{window}x_price_oi_regime",
-      f"{window}x_oi_x_skew",
+      f"{window}m_RatioSkew",
+      f"{window}m_RatioSkew_Z",
+      f"{window}m_CrowdingPressure",
+      f"{window}m_OI_Z",
+      f"{window}m_PriceOIRegime",
+      f"{window}m_OI_XSkew",
     ]
     drop_cols = [c for c in drop_cols if c in out.columns]
     if drop_cols:
