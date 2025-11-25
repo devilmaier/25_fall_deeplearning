@@ -172,60 +172,47 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   #   크로스 섹션 / 레짐 관련 팩터
   # ============================
 
-  # Note: g is already per-symbol data from groupby, so no need to group again
-  
-  # Close diff rate per window
-  g[f"{window}m_Close_Diff_Rate"] = g["close"].pct_change(window).fillna(0.0)
+  # Close diff rate per window (using rolling window approach)
+  close_first = roll["close"].apply(lambda x: x.iloc[0])
+  close_diff_rate = (c_last / close_first - 1.0).fillna(0.0)
 
-  # OI diff rate per window (없으면 0) — intermediate only
+  # OI diff rate per window (없으면 0)
   if "mt_oi" in cols:
-    g["x_mt_oi_diff_rate"] = g["mt_oi"].pct_change(window).fillna(0.0)
+    oi_first_for_diff = roll["mt_oi"].apply(lambda x: x.iloc[0])
+    oi_last_for_diff = roll["mt_oi"].apply(lambda x: x.iloc[-1])
+    oi_diff_rate = (oi_last_for_diff / oi_first_for_diff - 1.0).fillna(0.0)
   else:
-    g["x_mt_oi_diff_rate"] = 0.0
+    oi_diff_rate = pd.Series(0.0, index=g.index)
 
-  # Ratio skew (상위 - 전체 의 포지션 집중도), window 붙인 버전
-  if "mt_top_ls_ratio" in cols and "mt_ls_ratio" in cols:
-    g[f"{window}m_RatioSkew"] = g["mt_top_ls_ratio"] - g["mt_ls_ratio"]
+  # Ratio skew (상위 - 전체 의 포지션 집중도)
+  if "mt_top_ls_ratio" in cols and "mt_ls_ratio_cnt" in cols:
+    top_ls_mean = roll["mt_top_ls_ratio"].mean()
+    ls_mean = roll["mt_ls_ratio_cnt"].mean()
+    ratio_skew = top_ls_mean - ls_mean
   else:
-    g[f"{window}m_RatioSkew"] = 0.0
+    ratio_skew = pd.Series(0.0, index=g.index)
 
-  def _rolling_zscore(s: pd.Series, w: int, minp=None) -> pd.Series:
-    """
-    의도:
-      - window가 충분히 크면(window >= 5) 그 window 전체를 써서 z-score
-      - window가 너무 작으면(window < 5) 최소 5개 구간으로 강제해서
-        너무 noisy한 z-score를 피한다.
-    """
-    if w < 5:
-      window_eff = 5
-      minp_eff = 5 if minp is None else min(minp, window_eff)
-    else:
-      window_eff = w
-      if minp is None:
-        minp_eff = w
-      else:
-        minp_eff = min(minp, window_eff)
+  # Z-scores using rolling window
+  def _compute_rolling_zscore(values: pd.Series, w: int) -> pd.Series:
+    """Rolling z-score using the same window for mean/std calculation"""
+    window_eff = max(w, 5)  # minimum window of 5 to avoid noise
+    r = values.rolling(window=window_eff, min_periods=window_eff)
+    return (values - r.mean()) / (r.std(ddof=0) + 1e-9)
 
-    r = s.rolling(window=window_eff, min_periods=minp_eff)
-    return (s - r.mean()) / (r.std(ddof=0) + 1e-9)
-
-  # Z-scores of ratio skew (window prefix 버전 사용)
-  g[f"{window}m_RatioSkew_Z"] = _rolling_zscore(g[f"{window}m_RatioSkew"], window)
-
-  # Crowding Pressure
-  g[f"{window}m_CrowdingPressure"] = np.tanh(3.0 * g[f"{window}m_RatioSkew_Z"])
+  ratio_skew_z = _compute_rolling_zscore(ratio_skew, window)
+  crowding_pressure = np.tanh(ratio_skew_z)
 
   # OI z-score
   if "mt_oi" in cols:
-    g[f"{window}m_OI_Z"] = _rolling_zscore(g["mt_oi"], window)
+    oi_mean = roll["mt_oi"].mean()
+    oi_std = roll["mt_oi"].std(ddof=0) + 1e-9
+    oi_z = (oi_last / oi_mean - 1.0) / (oi_std / oi_mean)
   else:
-    g[f"{window}m_OI_Z"] = 0.0
+    oi_z = pd.Series(0.0, index=g.index)
 
   # Regime & interaction
-  g[f"{window}m_PriceOIRegime"] = (
-    np.sign(g[f"{window}m_Close_Diff_Rate"]) * np.sign(g["x_mt_oi_diff_rate"])
-  )
-  g[f"{window}m_OI_XSkew"] = g[f"{window}m_OI_Z"] * g[f"{window}m_RatioSkew_Z"]
+  price_oi_regime = np.sign(close_diff_rate) * np.sign(oi_diff_rate)
+  oi_xskew = oi_z * ratio_skew_z
 
   # ============================
   #   최종 DataFrame 구성
@@ -250,13 +237,13 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       f"{window}m_OI_P_Corr": oi_p_corr,
       f"{window}m_Force": force_idx,
       f"{window}m_PctB": pct_b,
-      f"{window}m_Close_Diff_Rate": g[f"{window}m_Close_Diff_Rate"],
-      f"{window}m_RatioSkew": g[f"{window}m_RatioSkew"],
-      f"{window}m_RatioSkew_Z": g[f"{window}m_RatioSkew_Z"],
-      f"{window}m_CrowdingPressure": g[f"{window}m_CrowdingPressure"],
-      f"{window}m_OI_Z": g[f"{window}m_OI_Z"],
-      f"{window}m_PriceOIRegime": g[f"{window}m_PriceOIRegime"],
-      f"{window}m_OI_XSkew": g[f"{window}m_OI_XSkew"],
+      f"{window}m_Close_Diff_Rate": close_diff_rate,
+      f"{window}m_RatioSkew": ratio_skew,
+      f"{window}m_RatioSkew_Z": ratio_skew_z,
+      f"{window}m_CrowdingPressure": crowding_pressure,
+      f"{window}m_OI_Z": oi_z,
+      f"{window}m_PriceOIRegime": price_oi_regime,
+      f"{window}m_OI_XSkew": oi_xskew,
     },
     index=g.index,
   )
