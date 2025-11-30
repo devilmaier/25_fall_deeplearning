@@ -264,6 +264,11 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     drop_cols = [c for c in drop_cols if c in out.columns]
     if drop_cols:
       out = out.drop(columns=drop_cols)
+  
+  if window == 5:
+    col = f"{window}m_OI_P_Corr"
+    if col in out.columns:
+      out = out.drop(columns=[col])
 
   # 1440분(24시간)짜리에서 드랍할 feature들 (NaN 이슈)
   if window == 1440:
