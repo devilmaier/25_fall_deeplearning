@@ -23,7 +23,7 @@ TYPE_LIST = [
   # added classical/technical factors
   "RVol", "EffRatio", "OI_P_Corr", "Force", "PctB",
   "Close_Diff_Rate", "RatioSkew", "RatioSkew_Z", "CrowdingPressure", "OI_Z", "PriceOIRegime", "OI_XSkew",
-  "WhaleGapDiff",
+  "RatioSkewDiff",
 ]
 
 
@@ -55,6 +55,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       "taker_buy_quote",
       "mt_oi",
       "mt_top_ls_ratio",
+      "mt_top_ls_ratio_cnt",
       "mt_ls_ratio_cnt",
       "pm_close",
     ]
@@ -90,8 +91,8 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     avg_trade = pd.Series(np.nan, index=g.index)
 
   # --- WhaleGap (rolling mean) ---
-  if "mt_top_ls_ratio" in cols and "mt_ls_ratio_cnt" in cols:
-    whale_gap = roll["mt_top_ls_ratio"].mean() - roll["mt_ls_ratio_cnt"].mean()
+  if "mt_top_ls_ratio_cnt" in cols and "mt_ls_ratio_cnt" in cols:
+    whale_gap = roll["mt_top_ls_ratio_cnt"].mean() - roll["mt_ls_ratio_cnt"].mean()
   else:
     whale_gap = pd.Series(np.nan, index=g.index)
 
@@ -214,14 +215,11 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   price_oi_regime = np.sign(close_diff_rate) * np.sign(oi_diff_rate)
   oi_xskew = oi_z * ratio_skew_z
 
-  # ============================
-  #   NEW: WhaleGapDiff (instant whale gap 변화)
-  # ============================
   if "mt_top_ls_ratio" in cols and "mt_ls_ratio_cnt" in cols:
     inst_gap = g["mt_top_ls_ratio"] - g["mt_ls_ratio_cnt"]
-    whalegap_diff = inst_gap - inst_gap.shift(window)
+    ratio_skew_diff = inst_gap - inst_gap.shift(window)
   else:
-    whalegap_diff = pd.Series(0.0, index=g.index)
+    ratio_skew_diff = pd.Series(0.0, index=g.index)
 
   # ============================
   #   최종 DataFrame 구성
@@ -253,7 +251,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       f"{window}m_OI_Z": oi_z,
       f"{window}m_PriceOIRegime": price_oi_regime,
       f"{window}m_OI_XSkew": oi_xskew,
-      f"{window}m_WhaleGapDiff": whalegap_diff,
+      f"{window}m_RatioSkewDiff": ratio_skew_diff,
     },
     index=g.index,
   )
@@ -263,7 +261,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     drop_cols = [
       f"{window}m_OI_Chg",
       f"{window}m_WhaleGap",
-      f"{window}m_WhaleGapDiff",
+      f"{window}m_RatioSkewDiff",
       f"{window}m_OI_P_Corr",
       f"{window}m_RatioSkew",
       f"{window}m_RatioSkew_Z",
