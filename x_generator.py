@@ -22,8 +22,8 @@ TYPE_LIST = [
   "H2L_Vol", "OI_Chg", "AvgTrade", "WhaleGap", "NetTaker", "C2VWAP", "Premium",
   # added classical/technical factors
   "RVol", "EffRatio", "OI_P_Corr", "Force", "PctB",
-  
   "Close_Diff_Rate", "RatioSkew", "RatioSkew_Z", "CrowdingPressure", "OI_Z", "PriceOIRegime", "OI_XSkew",
+  "WhaleGapDiff",
 ]
 
 
@@ -89,7 +89,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   else:
     avg_trade = pd.Series(np.nan, index=g.index)
 
-  # --- WhaleGap ---
+  # --- WhaleGap (rolling mean) ---
   if "mt_top_ls_ratio" in cols and "mt_ls_ratio_cnt" in cols:
     whale_gap = roll["mt_top_ls_ratio"].mean() - roll["mt_ls_ratio_cnt"].mean()
   else:
@@ -215,6 +215,15 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   oi_xskew = oi_z * ratio_skew_z
 
   # ============================
+  #   NEW: WhaleGapDiff (instant whale gap 변화)
+  # ============================
+  if "mt_top_ls_ratio" in cols and "mt_ls_ratio_cnt" in cols:
+    inst_gap = g["mt_top_ls_ratio"] - g["mt_ls_ratio_cnt"]
+    whalegap_diff = inst_gap - inst_gap.shift(window)
+  else:
+    whalegap_diff = pd.Series(0.0, index=g.index)
+
+  # ============================
   #   최종 DataFrame 구성
   # ============================
 
@@ -244,6 +253,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       f"{window}m_OI_Z": oi_z,
       f"{window}m_PriceOIRegime": price_oi_regime,
       f"{window}m_OI_XSkew": oi_xskew,
+      f"{window}m_WhaleGapDiff": whalegap_diff,
     },
     index=g.index,
   )
@@ -253,6 +263,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     drop_cols = [
       f"{window}m_OI_Chg",
       f"{window}m_WhaleGap",
+      f"{window}m_WhaleGapDiff",
       f"{window}m_OI_P_Corr",
       f"{window}m_RatioSkew",
       f"{window}m_RatioSkew_Z",
@@ -264,7 +275,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     drop_cols = [c for c in drop_cols if c in out.columns]
     if drop_cols:
       out = out.drop(columns=drop_cols)
-  
+
   if window == 5:
     col = f"{window}m_OI_P_Corr"
     if col in out.columns:
@@ -318,7 +329,6 @@ def x_generator(
       if "/data" not in store.keys():
         raise KeyError(f"No '/data' key in {p}, keys={store.keys()}")
     raw = pd.read_hdf(p, key="data")
-    #mt = "forward"  # metrics 없다고 가정 (있으면 여기서 읽어서 넘기면 됨)
 
     # universe 먼저 필터
     raw = raw[raw["symbol"].isin(universe)].copy()
