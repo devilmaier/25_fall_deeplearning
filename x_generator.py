@@ -265,6 +265,17 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     if drop_cols:
       out = out.drop(columns=drop_cols)
 
+  # 1440분(24시간)짜리에서 드랍할 feature들 (NaN 이슈)
+  if window == 1440:
+    drop_cols = [
+      f"{window}m_RatioSkew_Z",
+      f"{window}m_CrowdingPressure",
+      f"{window}m_OI_XSkew",
+    ]
+    drop_cols = [c for c in drop_cols if c in out.columns]
+    if drop_cols:
+      out = out.drop(columns=drop_cols)
+
   return out
 
 
@@ -302,13 +313,13 @@ def x_generator(
       if "/data" not in store.keys():
         raise KeyError(f"No '/data' key in {p}, keys={store.keys()}")
     raw = pd.read_hdf(p, key="data")
-    mt = None  # metrics 없다고 가정 (있으면 여기서 읽어서 넘기면 됨)
+    #mt = "forward"  # metrics 없다고 가정 (있으면 여기서 읽어서 넘기면 됨)
 
     # universe 먼저 필터
     raw = raw[raw["symbol"].isin(universe)].copy()
 
     # preprocess_data는 method를 명시해야 함
-    merged = preprocess_data(raw, method=mt)
+    merged = preprocess_data(raw)
     df_list.append(merged)
 
   df = pd.concat(df_list, ignore_index=True)
