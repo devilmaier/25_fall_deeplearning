@@ -313,13 +313,13 @@ def x_generator(
       if "/data" not in store.keys():
         raise KeyError(f"No '/data' key in {p}, keys={store.keys()}")
     raw = pd.read_hdf(p, key="data")
-    mt = "forward"  # metrics 없다고 가정 (있으면 여기서 읽어서 넘기면 됨)
+    #mt = "forward"  # metrics 없다고 가정 (있으면 여기서 읽어서 넘기면 됨)
 
     # universe 먼저 필터
     raw = raw[raw["symbol"].isin(universe)].copy()
 
     # preprocess_data는 method를 명시해야 함
-    merged = preprocess_data(raw, method=mt)
+    merged = preprocess_data(raw)
     df_list.append(merged)
 
   df = pd.concat(df_list, ignore_index=True)
