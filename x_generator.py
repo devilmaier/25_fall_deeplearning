@@ -23,7 +23,7 @@ TYPE_LIST = [
   # added classical/technical factors
   "RVol", "EffRatio", "OI_P_Corr", "Force", "PctB",
   "Close_Diff_Rate", "RatioSkew", "RatioSkew_Z", "CrowdingPressure", "OI_Z", "PriceOIRegime", "OI_XSkew",
-  "RatioSkewDiff",
+  "RatioSkewDiff", "Vol", "VolDiff", "PremiumDiff",
 ]
 
 
@@ -116,7 +116,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   else:
     c2vwap = pd.Series(np.nan, index=g.index)
 
-  # --- Premium ---
+  # --- Premium (rolling mean) ---
   if "pm_close" in cols:
     premium = roll["pm_close"].mean()
   else:
@@ -152,8 +152,8 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     price_diff = g["close"].diff().fillna(0.0)
     volume = g["quote_volume"]
     raw_force = (price_diff * volume).rolling(window=window, min_periods=window).mean()
-    vol_mean = volume.rolling(window=window, min_periods=window).mean().replace(0, 1.0)
-    force_idx = raw_force / vol_mean
+    vol_mean_force = volume.rolling(window=window, min_periods=window).mean().replace(0, 1.0)
+    force_idx = raw_force / vol_mean_force
   else:
     force_idx = pd.Series(np.nan, index=g.index)
 
@@ -174,8 +174,11 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   # ============================
 
   # Close diff rate per window (using rolling window approach)
-  close_first = roll["close"].apply(lambda x: x.iloc[0])
-  close_diff_rate = (c_last / close_first - 1.0).fillna(0.0)
+  if "close" in cols:
+    close_first = roll["close"].apply(lambda x: x.iloc[0])
+    close_diff_rate = (c_last / close_first - 1.0).fillna(0.0)
+  else:
+    close_diff_rate = pd.Series(0.0, index=g.index)
 
   # OI diff rate per window (없으면 0)
   if "mt_oi" in cols:
@@ -215,11 +218,30 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   price_oi_regime = np.sign(close_diff_rate) * np.sign(oi_diff_rate)
   oi_xskew = oi_z * ratio_skew_z
 
+  # RatioSkewDiff: inst_gap(t) - inst_gap(t-w)
   if "mt_top_ls_ratio" in cols and "mt_ls_ratio_cnt" in cols:
     inst_gap = g["mt_top_ls_ratio"] - g["mt_ls_ratio_cnt"]
     ratio_skew_diff = inst_gap - inst_gap.shift(window)
   else:
     ratio_skew_diff = pd.Series(0.0, index=g.index)
+
+  if "quote_volume" in cols and window <= 120:
+    vol_w = roll["quote_volume"].mean()       # w분 평균 volume
+    hist_window = window * 10
+    vol_hist = vol_w.rolling(window=hist_window, min_periods=hist_window)
+    vol_hist_mean = vol_hist.mean()
+    vol_hist_std = vol_hist.std(ddof=0) + 1e-9
+    vol_z = (vol_w - vol_hist_mean) / vol_hist_std
+    vol_diff = vol_z - vol_z.shift(window)
+  else:
+    vol_z = pd.Series(np.nan, index=g.index)
+    vol_diff = pd.Series(np.nan, index=g.index)
+
+  if "pm_close" in cols:
+    prem_inst = g["pm_close"]
+    premium_diff = prem_inst - prem_inst.shift(window)
+  else:
+    premium_diff = pd.Series(np.nan, index=g.index)
 
   # ============================
   #   최종 DataFrame 구성
@@ -252,43 +274,67 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       f"{window}m_PriceOIRegime": price_oi_regime,
       f"{window}m_OI_XSkew": oi_xskew,
       f"{window}m_RatioSkewDiff": ratio_skew_diff,
+      f"{window}m_Vol": vol_z,
+      f"{window}m_VolDiff": vol_diff,
+      f"{window}m_PremiumDiff": premium_diff,
     },
     index=g.index,
   )
 
-  # 1분짜리에서 완전히 드랍할 mt_ 기반 feature들
-  if window == 1:
-    drop_cols = [
-      f"{window}m_OI_Chg",
-      f"{window}m_WhaleGap",
-      f"{window}m_RatioSkewDiff",
+    # ============================
+  #   DROP RULES
+  # ============================
+
+  vol_drop = []
+  if window > 120:
+      vol_drop = [
+          f"{window}m_Vol",
+          f"{window}m_VolDiff",
+          f"{window}m_Vol_neut",
+          f"{window}m_VolDiff_neut",
+      ]
+
+  drop_w1_targets = [
+      "OI_Chg",
+      "WhaleGap",
+      "RatioSkewDiff",
+      "OI_P_Corr",
+      "RatioSkew",
+      "RatioSkew_Z",
+      "CrowdingPressure",
+      "OI_Z",
+      "PriceOIRegime",
+      "OI_XSkew",
+  ]
+  drop_w1 = [f"{window}m_{t}" for t in drop_w1_targets] + \
+            [f"{window}m_{t}_neut" for t in drop_w1_targets]
+
+  drop_w5 = [
       f"{window}m_OI_P_Corr",
-      f"{window}m_RatioSkew",
-      f"{window}m_RatioSkew_Z",
-      f"{window}m_CrowdingPressure",
-      f"{window}m_OI_Z",
-      f"{window}m_PriceOIRegime",
-      f"{window}m_OI_XSkew",
-    ]
-    drop_cols = [c for c in drop_cols if c in out.columns]
-    if drop_cols:
-      out = out.drop(columns=drop_cols)
+      f"{window}m_OI_P_Corr_neut",
+  ]
 
-  if window == 5:
-    col = f"{window}m_OI_P_Corr"
-    if col in out.columns:
-      out = out.drop(columns=[col])
+  drop_w1440_targets = [
+      "RatioSkew_Z",
+      "CrowdingPressure",
+      "OI_XSkew",
+  ]
+  drop_w1440 = [f"{window}m_{t}" for t in drop_w1440_targets] + \
+               [f"{window}m_{t}_neut" for t in drop_w1440_targets]
+               
+  if window == 1:
+      final_drop = vol_drop + drop_w1
+  elif window == 5:
+      final_drop = vol_drop + drop_w5
+  elif window == 1440:
+      final_drop = vol_drop + drop_w1440
+  else:
+      final_drop = vol_drop
 
-  # 1440분(24시간)짜리에서 드랍할 feature들 (NaN 이슈)
-  if window == 1440:
-    drop_cols = [
-      f"{window}m_RatioSkew_Z",
-      f"{window}m_CrowdingPressure",
-      f"{window}m_OI_XSkew",
-    ]
-    drop_cols = [c for c in drop_cols if c in out.columns]
-    if drop_cols:
-      out = out.drop(columns=drop_cols)
+  final_drop = [c for c in final_drop if c in out.columns]
+
+  if final_drop:
+      out = out.drop(columns=final_drop)
 
   return out
 
