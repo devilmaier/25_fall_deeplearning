@@ -43,7 +43,7 @@ def y_generator(
   Rows near day end lacking future data produce NaN and are dropped per window.
 
   Returns DataFrame with columns:
-    symbol, open_time_ms, {w}_y for each window.
+    symbol, start_time_ms, {w}_y for each window.
   """
 
   if window_list is None:
@@ -94,8 +94,6 @@ def y_generator(
     cs_mean = base.groupby("start_time_ms")[raw_col].transform("mean")
     base[y_col] = base[raw_col] - cs_mean
     base.drop(columns=[raw_col], inplace=True)
-
-  base.rename(columns={"start_time_ms": "open_time_ms"}, inplace=True)
 
   return base
 
