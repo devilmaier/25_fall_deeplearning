@@ -90,7 +90,7 @@ def y_generator(
   # Cross-sectional mean subtraction per timestamp for each window
   for w in window_list:
     raw_col = f"{w}_diff"
-    y_col = f"{w}_y"
+    y_col = f"y_{w}m"
     cs_mean = base.groupby("start_time_ms")[raw_col].transform("mean")
     base[y_col] = base[raw_col] - cs_mean
     base.drop(columns=[raw_col], inplace=True)
@@ -106,7 +106,7 @@ if __name__ == "__main__":
   parser.add_argument("--top", type=int, required=True, help="universe size (e.g. 30 -> use top30_universe.json)")
   parser.add_argument("--data_dir", type=str, default="data/1m_raw_data")
   parser.add_argument("--price_col", type=str, default="close", help="price column for forward diff (default: close)")
-  parser.add_argument("--windows", type=str, default="1,5,15,30,60", help="comma-separated forward horizons in minutes")
+  parser.add_argument("--windows", type=str, default="1,5,15,30,60,240", help="comma-separated forward horizons in minutes")
   args = parser.parse_args()
 
   universe_file = f"top{args.top}_universe.json"
