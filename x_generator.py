@@ -22,7 +22,7 @@ TYPE_LIST = [
   "H2L_Vol", "OI_Chg", "AvgTrade", "WhaleGap", "NetTaker", "C2VWAP", "Premium",
   # added classical/technical factors
   "RVol", "EffRatio", "OI_P_Corr", "Force", "PctB",
-  "Close_Diff_Rate", "RatioSkew", "RatioSkew_Z", "CrowdingPressure", "OI_Z", "PriceOIRegime", "OI_XSkew",
+  "Close_Diff_Rate", "RatioSkew", "RatioSkew_Z", "CrowdingPressure", "OI_Z", "OI_Price_Ratio", "OI_XSkew",
   "RatioSkewDiff", "Vol", "VolDiff", "PremiumDiff",
 ]
 
@@ -204,7 +204,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     return (values - r.mean()) / (r.std(ddof=0) + 1e-9)
 
   ratio_skew_z = _compute_rolling_zscore(ratio_skew, window)
-  crowding_pressure = np.tanh(ratio_skew_z)
+  crowding_pressure = np.tanh(1/ratio_skew_z)
 
   # OI z-score
   if "mt_oi" in cols:
@@ -215,7 +215,10 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     oi_z = pd.Series(0.0, index=g.index)
 
   # Regime & interaction
-  price_oi_regime = np.sign(close_diff_rate) * np.sign(oi_diff_rate)
+  # oi_price_ratio = z_score(oi_diff_rate / close_diff_rate)
+  oi_price_ratio_raw = oi_diff_rate / close_diff_rate.replace(0, 1e-9)
+  oi_price_ratio = _compute_rolling_zscore(oi_price_ratio_raw, window)
+  
   oi_xskew = oi_z * ratio_skew_z
 
   # RatioSkewDiff: inst_gap(t) - inst_gap(t-w)
@@ -271,7 +274,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       f"{window}m_RatioSkew_Z": ratio_skew_z,
       f"{window}m_CrowdingPressure": crowding_pressure,
       f"{window}m_OI_Z": oi_z,
-      f"{window}m_PriceOIRegime": price_oi_regime,
+      f"{window}m_OI_Price_Ratio": oi_price_ratio,
       f"{window}m_OI_XSkew": oi_xskew,
       f"{window}m_RatioSkewDiff": ratio_skew_diff,
       f"{window}m_Vol": vol_z,
@@ -303,7 +306,7 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
       "RatioSkew_Z",
       "CrowdingPressure",
       "OI_Z",
-      "PriceOIRegime",
+      "OI_Price_Ratio",
       "OI_XSkew",
   ]
   drop_w1 = [f"{window}m_{t}" for t in drop_w1_targets] + \
