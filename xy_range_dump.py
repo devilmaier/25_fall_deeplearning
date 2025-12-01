@@ -59,7 +59,7 @@ def _merge_x_y_for_date(
       1) X 생성 (in-memory)
       2) Y 생성 (in-memory)
       3) symbol + start_time_ms 기준으로 merge
-      4) data/dataset/{date}_xy_top{top}.h5 로 저장
+      4) data/xy/{date}_xy_top{top}.h5 로 저장
 
     return: (date_str, return_code) 0 이면 성공, 그 외는 실패
     """
@@ -150,7 +150,7 @@ def parse_args():
     parser.add_argument(
         "--out_dir",
         type=str,
-        default="data/dataset",
+        default="data/xy",
         help="output directory for merged XY datasets",
     )
     parser.add_argument(
@@ -246,6 +246,6 @@ python xy_range_dump.py \
   --end_date 2025-10-01 \
   --top 30 \
   --data_dir data/1m_raw_data \
-  --out_dir data/dataset \
+  --out_dir data/xy \
   --max_workers 16
   """
