@@ -667,4 +667,4 @@ def main():
 if __name__ == "__main__":
     main()
 
-#usage: python raw_data_fetcher.py --start-date 2025-10-01 --end-date 2025-10-07 --workers 16
+#usage: python raw_data_fetcher.py --start_date 2025-10-01 --end_date 2025-10-07 --workers 16

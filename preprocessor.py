@@ -99,7 +99,7 @@ def fill_nan_values(df: pd.DataFrame, method: str = "forward") -> pd.DataFrame:
   df = df.copy()
   numeric_cols = df.select_dtypes(include="number").columns
 
-  if method == "forward":
+  if method == "forward" or method == None:
     df[numeric_cols] = (
       df.groupby("symbol")[numeric_cols]
       .transform(lambda x: x.ffill())
