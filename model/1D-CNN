@@ -1,0 +1,90 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+class TimeSeries1DCNN(nn.Module):
+    def __init__(self, 
+                 input_dim=8,   # Number of features per time-step
+                 hidden_dim=64, # Number of filters (channels)
+                 output_dim=1,  # Prediction size (e.g., 1 for return)
+                 kernel_size=3,
+                 dropout=0.2):
+        super().__init__()
+        
+        # -------------------------------------------------------
+        # 1. Feature Extraction (Conv1D Blocks)
+        # Extracts local temporal patterns from the time-series.
+        # -------------------------------------------------------
+        
+        # Layer 1: Expand features
+        # Input: (Batch, Features, Time) -> Output: (Batch, 32, Time)
+        self.conv1 = nn.Conv1d(
+            in_channels=input_dim, 
+            out_channels=32, 
+            kernel_size=kernel_size, 
+            padding=1
+        )
+        self.bn1 = nn.BatchNorm1d(32)
+        self.pool1 = nn.MaxPool1d(kernel_size=2) # Downsample time by 2
+        
+        # Layer 2: Deep feature extraction
+        # Input: (Batch, 32, Time/2) -> Output: (Batch, 64, Time/2)
+        self.conv2 = nn.Conv1d(
+            in_channels=32, 
+            out_channels=hidden_dim, 
+            kernel_size=kernel_size, 
+            padding=1
+        )
+        self.bn2 = nn.BatchNorm1d(hidden_dim)
+        self.pool2 = nn.MaxPool1d(kernel_size=2) # Downsample time by 2
+        
+        self.dropout = nn.Dropout(dropout)
+
+        # -------------------------------------------------------
+        # 2. Aggregation (Global Average Pooling)
+        # Summarizes the entire time sequence into a single vector.
+        # -------------------------------------------------------
+        # AdaptiveAvgPool1d(1) forces the time dimension to size 1
+        self.gap = nn.AdaptiveAvgPool1d(1) 
+
+        # -------------------------------------------------------
+        # 3. Prediction Head
+        # -------------------------------------------------------
+        self.fc = nn.Sequential(
+            nn.Linear(hidden_dim, 32),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(32, output_dim)
+        )
+
+    def forward(self, x):
+        # Input x shape: (Batch, Time, Features)
+        # PyTorch Conv1d expects (Batch, Features, Time), so we permute.
+        
+        # [Step 1] Permute dimensions
+        x = x.permute(0, 2, 1) 
+        
+        # [Step 2] Convolutional Blocks
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = F.relu(x)
+        x = self.pool1(x)
+        
+        x = self.conv2(x)
+        x = self.bn2(x)
+        x = F.relu(x)
+        x = self.pool2(x)
+        
+        x = self.dropout(x)
+        
+        # [Step 3] Global Pooling & Flatten
+        # Shape: (Batch, Hidden, Time_Reduced) -> (Batch, Hidden, 1)
+        x = self.gap(x)
+        
+        # Shape: (Batch, Hidden)
+        x = x.squeeze(-1) 
+        
+        # [Step 4] Final Prediction
+        out = self.fc(x)
+        
+        return out.squeeze() # Return shape: (Batch)
