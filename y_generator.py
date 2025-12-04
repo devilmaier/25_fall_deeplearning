@@ -23,7 +23,7 @@ def _compute_symbol_forward_diff(g: pd.DataFrame, window: int, price_col: str) -
   """
   g = g.sort_values("start_time_ms")
   future = g[price_col].shift(-window)
-  return (future - g[price_col]) / g[price_col]
+  return (future - g[price_col] * 10000 / g[price_col]
 
 
 def y_generator(
