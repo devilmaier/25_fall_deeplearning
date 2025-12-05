@@ -242,10 +242,10 @@ if __name__ == "__main__":
     main()
 """
 python xy_range_dump.py \
-  --start_date 2025-03-01 \
-  --end_date 2025-10-01 \
-  --top 30 \
+  --start_date 2024-02-01 \
+  --end_date 2025-11-01 \
+  --top 50 \
   --data_dir data/1m_raw_data \
   --out_dir data/xy \
-  --max_workers 16
+  --max_workers 12
   """
