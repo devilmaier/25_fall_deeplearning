@@ -19,16 +19,17 @@ PROJECT_ROOT = Path(__file__).parent.parent
 CONFIG = {
     'data_dir': str(PROJECT_ROOT / 'data' / 'xy'),
     'start_date': '2025-03-01',
-    'end_date': '2025-03-07',
+    'end_date': '2025-03-31',
     'top_n': 30,
     'seq_len': 60,      # Window size
     'input_dim': 480,   # Will be updated automatically
     'output_dim': 1,    
     'batch_size': 512,
-    'epochs': 2,
+    'epochs': 10,
     'lr': 0.001,
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_44.json'),
+    'ban_list_path': str(PROJECT_ROOT / 'global_ban_dates.json'), # [NEW] Path to ban list
     'save_path': str(PROJECT_ROOT / 'best_model.pt')
 }
 
@@ -76,7 +77,8 @@ def train():
         top_n=CONFIG['top_n'],
         feature_list=CONFIG['feature_list'],
         seq_len=CONFIG['seq_len'],
-        batch_size=CONFIG['batch_size']
+        batch_size=CONFIG['batch_size'],
+        ban_list_path=CONFIG['ban_list_path'] # [NEW] Pass ban list path
     )
     CONFIG['input_dim'] = feature_dim
     print(f"[INFO] Input feature dim: {feature_dim}")
@@ -180,4 +182,3 @@ def train():
 
 if __name__ == "__main__":
     train()
-

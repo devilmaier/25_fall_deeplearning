@@ -16,22 +16,22 @@ class CryptoDataset(Dataset):
         self.target_col = target_col
         self.feature_cols = feature_cols
         
+        # 1. Drop rows where target (y) is NaN (e.g., end of dataset)
         init_len = len(df)
         df = df.dropna(subset=[target_col])
         
+        # 2. Fill NaN features with 0 to prevent model instability
         df = df.fillna(0)
-        
         df = df.replace([np.inf, -np.inf], 0)
         
         print(f"[{mode.upper()}] Cleaned NaNs: {init_len} -> {len(df)} rows (Dropped {init_len - len(df)})")
 
-        # Group data by symbol to prevent mixing sequences between different coins
         self.grouped_data = []
         self.grouped_targets = []
         
         # --- Option 1: Time-Series Data (for LSTM, CNN) ---
         if seq_len > 1:
-            # print(f"[INFO] Building {mode} dataset (Sequence Mode)...") # 너무 시끄러우면 주석 처리
+            # Group by symbol to prevent mixing sequences between different coins
             for sym, group in tqdm(df.groupby('symbol'), desc=f"Building {mode}"):
                 group = group.sort_values('start_time_ms')
                 
@@ -88,16 +88,27 @@ def get_loaders(
     target_col='y_60m', 
     seq_len=60, 
     batch_size=32, 
-    num_workers=4
+    num_workers=4,
+    ban_list_path=None
 ):
     """
-    Standard function to load data, split into train/val/test, and return DataLoaders.
+    Standard function to load data, apply ban list logic, split, and return DataLoaders.
     """
-    # 1. Load Feature List
+    # 1. Load Ban List (Missing dates & NaN masking)
+    missing_dates = []
+    nan_dates_map = {}
+    
+    if ban_list_path and os.path.exists(ban_list_path):
+        print(f"[LOADER] Loading ban list from {ban_list_path}")
+        with open(ban_list_path, 'r') as f:
+            ban_data = json.load(f)
+            missing_dates = ban_data.get("missing_dates", [])
+            nan_dates_map = ban_data.get("nan_dates", {})
+
+    # 2. Load Feature List
     if isinstance(feature_list, str) and feature_list.endswith('.json'):
         with open(feature_list, 'r') as f:
             features = json.load(f)
-            # Handle case where JSON contains a string representation of a list
             if isinstance(features, str):
                 import ast
                 features = ast.literal_eval(features)
@@ -106,23 +117,42 @@ def get_loaders(
     else:
         features = None # Auto-detection
 
-    # 2. Load and Merge Data Files
-    dates = pd.date_range(start_date, end_date).strftime("%Y-%m-%d").tolist()
-    file_paths = [os.path.join(data_dir, f"{d}_xy_top{top_n}.h5") for d in dates]
-    file_paths = [p for p in file_paths if os.path.exists(p)]
+    # 3. Generate Date Range & Filter Missing Dates
+    all_dates = pd.date_range(start_date, end_date).strftime("%Y-%m-%d").tolist()
+    dates = [d for d in all_dates if d not in missing_dates]
     
-    if not file_paths:
-        raise FileNotFoundError("No data files found for the given date range.")
+    if len(dates) < len(all_dates):
+        print(f"[LOADER] Skipped {len(all_dates) - len(dates)} dates defined in ban list.")
+
+    # 4. Load Files & Apply Masking
+    print(f"[LOADER] Loading {len(dates)} files...")
+    df_list = []
     
-    print(f"[LOADER] Loading {len(file_paths)} files...")
-    df_list = [pd.read_hdf(p, mode='r') for p in file_paths]
+    for d in dates:
+        file_path = os.path.join(data_dir, f"{d}_xy_top{top_n}.h5")
+        if os.path.exists(file_path):
+            daily_df = pd.read_hdf(file_path, mode='r')
+            
+            # Apply Masking: Set specific features to 0 for specific dates
+            if d in nan_dates_map:
+                bad_features = nan_dates_map[d]
+                # Filter features that exist in the dataframe
+                valid_bad_features = [c for c in bad_features if c in daily_df.columns]
+                
+                if valid_bad_features:
+                    daily_df.loc[:, valid_bad_features] = 0
+            
+            df_list.append(daily_df)
+    
+    if not df_list:
+        raise FileNotFoundError("No valid data files loaded. Check date range or ban list.")
+
     full_df = pd.concat(df_list, ignore_index=True)
     
-    # Auto-detect features if not provided (looks for '_neut' suffix)
+    # 5. Feature Selection
     if features is None:
         features = [c for c in full_df.columns if c.startswith('x_') and c.endswith('_neut')]
     else:
-        # Filter features to only include those that exist in the dataframe
         available_cols = set(full_df.columns)
         original_features = features.copy() if isinstance(features, list) else list(features)
         original_count = len(original_features)
@@ -130,19 +160,14 @@ def get_loaders(
         
         if len(features) < original_count:
             missing = [f for f in original_features if f not in available_cols]
-            print(f"[WARNING] {original_count - len(features)} features not found in data")
-            if len(missing) <= 10:
-                print(f"[WARNING] Missing features: {missing}")
-            else:
-                print(f"[WARNING] Missing features (first 10): {missing[:10]}...")
-            print(f"[LOADER] Using {len(features)} available features out of {original_count} requested")
+            print(f"[WARNING] {original_count - len(features)} features not found in data.")
         
         if len(features) == 0:
-            raise ValueError("No valid features found in the dataframe. Please check your feature list.")
+            raise ValueError("No valid features found in the dataframe.")
     
     print(f"[LOADER] Features: {len(features)}, Target: {target_col}, Seq_Len: {seq_len}")
 
-    # 3. Time-based Split (Train 80% / Val 10% / Test 10%)
+    # 6. Time-based Split (Train 80% / Val 10% / Test 10%)
     dates_sorted = full_df['start_time_ms'].unique()
     dates_sorted.sort()
     
@@ -158,7 +183,7 @@ def get_loaders(
     val_df = full_df[full_df['start_time_ms'].isin(val_times)]
     test_df = full_df[full_df['start_time_ms'].isin(test_times)]
 
-    # 4. Create Datasets & Loaders
+    # 7. Create Datasets & Loaders
     train_ds = CryptoDataset(train_df, features, target_col, seq_len, 'train')
     val_ds = CryptoDataset(val_df, features, target_col, seq_len, 'val')
     test_ds = CryptoDataset(test_df, features, target_col, seq_len, 'test')
