@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class CNNTransformer(nn.Module):
+class SpatioTemporalTransformer(nn.Module):
     def __init__(self, 
                  num_nodes=30, 
                  input_dim=480, 
