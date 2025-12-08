@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
+
 class CryptoDataset(Dataset):
     """
     PyTorch Dataset for cryptocurrency data.
@@ -89,12 +90,53 @@ def get_loaders(
     seq_len=60, 
     batch_size=32, 
     num_workers=4,
-    ban_list_path=None
+    ban_list_path=None,
+    export_path=None      # <-- ⭐ 추가된 옵션
 ):
     """
-    Standard function to load data, apply ban list logic, split, and return DataLoaders.
+    Standard function to load data, apply ban list logic, split, 
+    and return DataLoaders. Now supports export + caching.
     """
-    # 1. Load Ban List (Missing dates & NaN masking)
+
+    # =====================================================================
+    # ⭐ 0. CACHE: export_path에 데이터가 이미 있으면 그대로 load
+    # =====================================================================
+    if export_path is not None:
+        train_fp = os.path.join(export_path, "train_df.h5")
+        val_fp   = os.path.join(export_path, "val_df.h5")
+        test_fp  = os.path.join(export_path, "test_df.h5")
+        meta_fp  = os.path.join(export_path, "meta.json")
+
+        if all(os.path.exists(x) for x in [train_fp, val_fp, test_fp, meta_fp]):
+            print(f"[CACHE] Using cached dataset from {export_path}")
+
+            train_df = pd.read_hdf(train_fp)
+            val_df   = pd.read_hdf(val_fp)
+            test_df  = pd.read_hdf(test_fp)
+
+            with open(meta_fp, "r") as f:
+                meta = json.load(f)
+
+            features = meta["feature_list"]
+            seq_len  = meta["seq_len"]
+
+            # 그대로 Dataset + Loader 재구성
+            train_ds = CryptoDataset(train_df, features, target_col, seq_len, 'train')
+            val_ds   = CryptoDataset(val_df,   features, target_col, seq_len, 'val')
+            test_ds  = CryptoDataset(test_df,  features, target_col, seq_len, 'test')
+
+            train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+            val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=num_workers)
+            test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=num_workers)
+
+            return train_loader, val_loader, test_loader, len(features)
+
+        else:
+            print("[CACHE] No valid cached data found. Building dataset...")
+
+    # =====================================================================
+    # 1. Load Ban List
+    # =====================================================================
     missing_dates = []
     nan_dates_map = {}
     
@@ -105,7 +147,9 @@ def get_loaders(
             missing_dates = ban_data.get("missing_dates", [])
             nan_dates_map = ban_data.get("nan_dates", {})
 
+    # =====================================================================
     # 2. Load Feature List
+    # =====================================================================
     if isinstance(feature_list, str) and feature_list.endswith('.json'):
         with open(feature_list, 'r') as f:
             features = json.load(f)
@@ -115,16 +159,20 @@ def get_loaders(
     elif isinstance(feature_list, list):
         features = feature_list
     else:
-        features = None # Auto-detection
+        features = None
 
-    # 3. Generate Date Range & Filter Missing Dates
+    # =====================================================================
+    # 3. Date Range
+    # =====================================================================
     all_dates = pd.date_range(start_date, end_date).strftime("%Y-%m-%d").tolist()
     dates = [d for d in all_dates if d not in missing_dates]
-    
+
     if len(dates) < len(all_dates):
         print(f"[LOADER] Skipped {len(all_dates) - len(dates)} dates defined in ban list.")
 
+    # =====================================================================
     # 4. Load Files & Apply Masking
+    # =====================================================================
     print(f"[LOADER] Loading {len(dates)} files...")
     df_list = []
     
@@ -132,13 +180,11 @@ def get_loaders(
         file_path = os.path.join(data_dir, f"{d}_xy_top{top_n}.h5")
         if os.path.exists(file_path):
             daily_df = pd.read_hdf(file_path, mode='r')
-            
-            # Apply Masking: Set specific features to 0 for specific dates
+
+            # Feature masking for corrupted dates
             if d in nan_dates_map:
                 bad_features = nan_dates_map[d]
-                # Filter features that exist in the dataframe
                 valid_bad_features = [c for c in bad_features if c in daily_df.columns]
-                
                 if valid_bad_features:
                     daily_df.loc[:, valid_bad_features] = 0
             
@@ -149,47 +195,75 @@ def get_loaders(
 
     full_df = pd.concat(df_list, ignore_index=True)
     
+    # =====================================================================
     # 5. Feature Selection
+    # =====================================================================
     if features is None:
-        features = [c for c in full_df.columns if c.startswith('x_') and c.endswith('_neut')]
+        features = [c for c in full_df.columns if c.startswith('x_')]
     else:
-        available_cols = set(full_df.columns)
-        original_features = features.copy() if isinstance(features, list) else list(features)
-        original_count = len(original_features)
-        features = [f for f in original_features if f in available_cols]
-        
-        if len(features) < original_count:
-            missing = [f for f in original_features if f not in available_cols]
-            print(f"[WARNING] {original_count - len(features)} features not found in data.")
-        
+        available = set(full_df.columns)
+        original = features.copy()
+        features = [f for f in original if f in available]
+
+        if len(features) < len(original):
+            print(f"[WARNING] {len(original) - len(features)} features missing in data.")
+
         if len(features) == 0:
-            raise ValueError("No valid features found in the dataframe.")
-    
+            raise ValueError("No valid features found in dataframe.")
+
     print(f"[LOADER] Features: {len(features)}, Target: {target_col}, Seq_Len: {seq_len}")
 
-    # 6. Time-based Split (Train 80% / Val 10% / Test 10%)
+    # =====================================================================
+    # 6. Time-based Split
+    # =====================================================================
     dates_sorted = full_df['start_time_ms'].unique()
     dates_sorted.sort()
     
     n_dates = len(dates_sorted)
     train_idx = int(n_dates * 0.8)
-    val_idx = int(n_dates * 0.9)
+    val_idx   = int(n_dates * 0.9)
     
     train_times = dates_sorted[:train_idx]
-    val_times = dates_sorted[train_idx:val_idx]
-    test_times = dates_sorted[val_idx:]
+    val_times   = dates_sorted[train_idx:val_idx]
+    test_times  = dates_sorted[val_idx:]
     
     train_df = full_df[full_df['start_time_ms'].isin(train_times)]
-    val_df = full_df[full_df['start_time_ms'].isin(val_times)]
-    test_df = full_df[full_df['start_time_ms'].isin(test_times)]
+    val_df   = full_df[full_df['start_time_ms'].isin(val_times)]
+    test_df  = full_df[full_df['start_time_ms'].isin(test_times)]
 
-    # 7. Create Datasets & Loaders
+    # =====================================================================
+    # ⭐ 7. EXPORT (full_df, train_df, val_df, test_df, meta)
+    # =====================================================================
+    if export_path is not None:
+        os.makedirs(export_path, exist_ok=True)
+
+        full_df.to_hdf(os.path.join(export_path, "full_df.h5"), key="df", mode="w")
+        train_df.to_hdf(os.path.join(export_path, "train_df.h5"), key="df", mode="w")
+        val_df.to_hdf(os.path.join(export_path, "val_df.h5"), key="df", mode="w")
+        test_df.to_hdf(os.path.join(export_path, "test_df.h5"), key="df", mode="w")
+
+        meta = {
+            "feature_list": features,
+            "target_col": target_col,
+            "seq_len": seq_len,
+            "start_date": start_date,
+            "end_date": end_date,
+            "top_n": top_n,
+        }
+        with open(os.path.join(export_path, "meta.json"), "w") as f:
+            json.dump(meta, f, indent=2)
+
+        print(f"[EXPORT] Saved dataset to: {export_path}")
+
+    # =====================================================================
+    # 8. Dataset + Loaderå
+    # =====================================================================
     train_ds = CryptoDataset(train_df, features, target_col, seq_len, 'train')
-    val_ds = CryptoDataset(val_df, features, target_col, seq_len, 'val')
-    test_ds = CryptoDataset(test_df, features, target_col, seq_len, 'test')
+    val_ds   = CryptoDataset(val_df,   features, target_col, seq_len, 'val')
+    test_ds  = CryptoDataset(test_df,  features, target_col, seq_len, 'test')
     
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-    test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    test_loader  = DataLoader(test_ds,  batch_size=batch_size, shuffle=False, num_workers=num_workers)
     
     return train_loader, val_loader, test_loader, len(features)

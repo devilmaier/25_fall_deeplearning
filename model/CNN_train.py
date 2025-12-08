@@ -1,3 +1,4 @@
+#author : snuzeus
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -30,7 +31,8 @@ CONFIG = {
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_44.json'),
     'ban_list_path': str(PROJECT_ROOT / 'global_ban_dates.json'), # [NEW] Path to ban list
-    'save_path': str(PROJECT_ROOT / 'best_model.pt')
+    'save_path': str(PROJECT_ROOT / 'best_model.pt'),
+    'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / 'cnn'),
 }
 
 def compute_stats(loader):
@@ -78,7 +80,9 @@ def train():
         feature_list=CONFIG['feature_list'],
         seq_len=CONFIG['seq_len'],
         batch_size=CONFIG['batch_size'],
-        ban_list_path=CONFIG['ban_list_path'] # [NEW] Pass ban list path
+        ban_list_path=CONFIG['ban_list_path'],
+        export_path=CONFIG['export_path'],
+        # [NEW] Pass ban list path
     )
     CONFIG['input_dim'] = feature_dim
     print(f"[INFO] Input feature dim: {feature_dim}")
