@@ -36,6 +36,7 @@ CONFIG = {
     'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_44.json'),
     'ban_list_path': str(PROJECT_ROOT / 'global_ban_dates.json'), # [NEW] Path to ban list
     'save_path': str(PROJECT_ROOT / 'best_spatiotemporal_model.pt'),
+    'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / 'spatiotfm'),
     'cnn_loss_weight': 0.2,         # Weight for CNN auxiliary loss
     'transformer_loss_weight': 0.3  # Weight for Transformer auxiliary loss
 }
@@ -88,7 +89,8 @@ def train():
         feature_list=CONFIG['feature_list'],
         seq_len=CONFIG['seq_len'],
         batch_size=CONFIG['batch_size'],
-        ban_list_path=CONFIG['ban_list_path'] # [NEW] Pass ban list path
+        ban_list_path=CONFIG['ban_list_path'],
+        export_path=CONFIG['export_path'],
     )
     CONFIG['input_dim'] = feature_dim
     print(f"[INFO] Input feature dim: {feature_dim}")
