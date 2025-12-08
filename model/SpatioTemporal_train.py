@@ -7,8 +7,8 @@ from pathlib import Path
 from tqdm import tqdm
 
 # Import custom modules
-from GNN_dataloader import get_gnn_loaders
-from CnnTransformer import CNNTransformer
+from SpatioTemporal_dataloader import get_spatiotemporal_loaders
+from SpatioTemporalTransformer import SpatioTemporalTransformer
 
 # Get project root directory (parent of model directory)
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -34,7 +34,8 @@ CONFIG = {
     'lr': 0.001,
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_44.json'),
-    'save_path': str(PROJECT_ROOT / 'best_cnn_transformer_model.pt'),
+    'ban_list_path': str(PROJECT_ROOT / 'global_ban_dates.json'), # [NEW] Path to ban list
+    'save_path': str(PROJECT_ROOT / 'best_spatiotemporal_model.pt'),
     'cnn_loss_weight': 0.2,         # Weight for CNN auxiliary loss
     'transformer_loss_weight': 0.3  # Weight for Transformer auxiliary loss
 }
@@ -45,7 +46,7 @@ def compute_stats(loader):
     For GNN: input shape is (Batch, Time, Nodes, Features)
     Returns tensors of shape (1, 1, 1, Feature_Dim).
     """
-    print("[INFO] Computing input statistics (Mean, Std) for CNN-Transformer...")
+    print("[INFO] Computing input statistics (Mean, Std) for SpatioTemporalTransformer...")
     sum_x = 0
     sum_sq_x = 0
     count = 0
@@ -75,10 +76,10 @@ def compute_stats(loader):
 
 def train():
     print(f"[INFO] Device: {CONFIG['device']}")
-    print(f"[INFO] Model: CNN-Transformer (1D-CNN -> Transformer with Residual)")
+    print(f"[INFO] Model: SpatioTemporalTransformer (1D-CNN -> Transformer with Residual)")
     
     # 1. Prepare Data Loaders
-    train_loader, val_loader, test_loader, feature_dim = get_gnn_loaders(
+    train_loader, val_loader, test_loader, feature_dim = get_spatiotemporal_loaders(
         data_dir=CONFIG['data_dir'],
         start_date=CONFIG['start_date'],
         end_date=CONFIG['end_date'],
@@ -86,7 +87,8 @@ def train():
         num_nodes=CONFIG['num_nodes'],
         feature_list=CONFIG['feature_list'],
         seq_len=CONFIG['seq_len'],
-        batch_size=CONFIG['batch_size']
+        batch_size=CONFIG['batch_size'],
+        ban_list_path=CONFIG['ban_list_path'] # [NEW] Pass ban list path
     )
     CONFIG['input_dim'] = feature_dim
     print(f"[INFO] Input feature dim: {feature_dim}")
@@ -99,7 +101,7 @@ def train():
     input_std = input_std.to(CONFIG['device'])
 
     # 3. Initialize Model with Stats
-    model = CNNTransformer(
+    model = SpatioTemporalTransformer(
         num_nodes=CONFIG['num_nodes'],
         input_dim=CONFIG['input_dim'], 
         hidden_dim=CONFIG['hidden_dim'],

@@ -6,9 +6,9 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
 
-class CryptoGraphDataset(Dataset):
+class SpatioTemporalDataset(Dataset):
     """
-    PyTorch Dataset for GNN-LSTM model.
+    PyTorch Dataset for SpatioTemporalTransformer model.
     Creates graph-structured data where each sample contains multiple symbols (nodes)
     at the same time window.
     
@@ -111,7 +111,7 @@ class CryptoGraphDataset(Dataset):
         return torch.tensor(x), torch.tensor(y)
 
 
-def get_gnn_loaders(
+def get_spatiotemporal_loaders(
     data_dir, 
     start_date, 
     end_date, 
@@ -121,10 +121,11 @@ def get_gnn_loaders(
     seq_len=60, 
     num_nodes=30,
     batch_size=32, 
-    num_workers=4
+    num_workers=4,
+    ban_list_path=None
 ):
     """
-    Function to load data for GNN-LSTM model and return DataLoaders.
+    Function to load data for SpatioTemporalTransformer model and return DataLoaders.
     
     Args:
         data_dir: Directory containing .h5 files
@@ -137,11 +138,23 @@ def get_gnn_loaders(
         num_nodes: Number of nodes (symbols) per graph
         batch_size: Batch size
         num_workers: Number of worker threads
+        ban_list_path: Path to JSON file containing banned dates and features
     
     Returns:
         train_loader, val_loader, test_loader, feature_dim
     """
-    # 1. Load Feature List
+    # 1. Load Ban List (Missing dates & NaN masking)
+    missing_dates = []
+    nan_dates_map = {}
+    
+    if ban_list_path and os.path.exists(ban_list_path):
+        print(f"[ST LOADER] Loading ban list from {ban_list_path}")
+        with open(ban_list_path, 'r') as f:
+            ban_data = json.load(f)
+            missing_dates = ban_data.get("missing_dates", [])
+            nan_dates_map = ban_data.get("nan_dates", {})
+
+    # 2. Load Feature List
     if isinstance(feature_list, str) and feature_list.endswith('.json'):
         with open(feature_list, 'r') as f:
             features = json.load(f)
@@ -154,16 +167,35 @@ def get_gnn_loaders(
     else:
         features = None # Auto-detection
 
-    # 2. Load and Merge Data Files
-    dates = pd.date_range(start_date, end_date).strftime("%Y-%m-%d").tolist()
-    file_paths = [os.path.join(data_dir, f"{d}_xy_top{top_n}.h5") for d in dates]
-    file_paths = [p for p in file_paths if os.path.exists(p)]
+    # 3. Load and Merge Data Files
+    all_dates = pd.date_range(start_date, end_date).strftime("%Y-%m-%d").tolist()
+    dates = [d for d in all_dates if d not in missing_dates]
     
-    if not file_paths:
-        raise FileNotFoundError("No data files found for the given date range.")
+    if len(dates) < len(all_dates):
+        print(f"[ST LOADER] Skipped {len(all_dates) - len(dates)} dates defined in ban list.")
+
+    print(f"[ST LOADER] Loading {len(dates)} files...")
+    df_list = []
     
-    print(f"[GNN LOADER] Loading {len(file_paths)} files...")
-    df_list = [pd.read_hdf(p, mode='r') for p in file_paths]
+    for d in dates:
+        file_path = os.path.join(data_dir, f"{d}_xy_top{top_n}.h5")
+        if os.path.exists(file_path):
+            daily_df = pd.read_hdf(file_path, mode='r')
+            
+            # Apply Masking: Set specific features to 0 for specific dates
+            if d in nan_dates_map:
+                bad_features = nan_dates_map[d]
+                # Filter features that exist in the dataframe
+                valid_bad_features = [c for c in bad_features if c in daily_df.columns]
+                
+                if valid_bad_features:
+                    daily_df.loc[:, valid_bad_features] = 0
+            
+            df_list.append(daily_df)
+    
+    if not df_list:
+        raise FileNotFoundError("No valid data files loaded. Check date range or ban list.")
+
     full_df = pd.concat(df_list, ignore_index=True)
     
     # Auto-detect features if not provided
@@ -183,12 +215,12 @@ def get_gnn_loaders(
                 print(f"[WARNING] Missing features: {missing}")
             else:
                 print(f"[WARNING] Missing features (first 10): {missing[:10]}...")
-            print(f"[GNN LOADER] Using {len(features)} available features out of {original_count} requested")
+            print(f"[ST LOADER] Using {len(features)} available features out of {original_count} requested")
         
         if len(features) == 0:
             raise ValueError("No valid features found in the dataframe. Please check your feature list.")
     
-    print(f"[GNN LOADER] Features: {len(features)}, Target: {target_col}, Seq_Len: {seq_len}, Num_Nodes: {num_nodes}")
+    print(f"[ST LOADER] Features: {len(features)}, Target: {target_col}, Seq_Len: {seq_len}, Num_Nodes: {num_nodes}")
 
     # 3. Time-based Split (Train 80% / Val 10% / Test 10%)
     dates_sorted = full_df['start_time_ms'].unique()
@@ -207,9 +239,9 @@ def get_gnn_loaders(
     test_df = full_df[full_df['start_time_ms'].isin(test_times)]
 
     # 4. Create Datasets & Loaders
-    train_ds = CryptoGraphDataset(train_df, features, target_col, seq_len, num_nodes, 'train')
-    val_ds = CryptoGraphDataset(val_df, features, target_col, seq_len, num_nodes, 'val')
-    test_ds = CryptoGraphDataset(test_df, features, target_col, seq_len, num_nodes, 'test')
+    train_ds = SpatioTemporalDataset(train_df, features, target_col, seq_len, num_nodes, 'train')
+    val_ds = SpatioTemporalDataset(val_df, features, target_col, seq_len, num_nodes, 'val')
+    test_ds = SpatioTemporalDataset(test_df, features, target_col, seq_len, num_nodes, 'test')
     
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers)
     val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers)
