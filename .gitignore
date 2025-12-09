@@ -1,0 +1,48 @@
+# ======================================
+# macOS system junk files
+# ======================================
+.DS_Store
+**/.DS_Store
+Icon?
+Icon\r
+data/datasets/Icon?
+data/datasets/Icon\r
+data/datasets/**/Icon?
+data/datasets/**/Icon\r
+
+# ======================================
+# Python cache, logs
+# ======================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pkl
+*.log
+
+# ======================================
+# Jupyter 
+# ======================================
+.ipynb_checkpoints/
+
+# ======================================
+# Virtual environments
+# ======================================
+venv/
+.env/
+.venv/
+
+# ======================================
+# HDF5 / Parquet generated datasets (optional)
+# If you DON'T want datasets tracked by Git, uncomment these:
+# ======================================
+# data/datasets/*.h5
+data/xy/
+# data/datasets/*.parquet
+# data/datasets/**/*.parquet
+
+# ======================================
+# Backup files
+# ======================================
+*.bak
+*.backup
