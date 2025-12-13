@@ -37,7 +37,13 @@ class CryptoMamba(nn.Module):
                  mean=None,
                  std=None):
         """
-        CryptoMamba Model for cryptocurrency prediction
+        CryptoMamba Model for cryptocurrency prediction with cross-coin correlation learning
+        
+        Architecture:
+        1. Per-coin feature projection
+        2. Temporal Mamba layers (process time dimension)
+        3. Spatial Mamba layers (process coin dimension)
+        4. Prediction head
         
         Args:
             num_nodes: Number of coins/symbols (default: 30)
@@ -74,49 +80,74 @@ class CryptoMamba(nn.Module):
             self.register_buffer('input_std', torch.ones(1, 1, 1, input_dim))
         
         # -------------------------------------------------------
-        # 1. Feature Projection (input_dim -> hidden_dim)
+        # 1. Feature Projection (per-coin)
+        # Project each coin's features independently
         # -------------------------------------------------------
-        self.encoder = nn.Linear(input_dim, hidden_dim)
+        self.feature_projection = nn.Linear(input_dim, hidden_dim)
         
         # -------------------------------------------------------
-        # 2. Mamba Backbone
-        # Stack Mamba blocks to learn temporal features
+        # 2. Temporal Mamba Layers
+        # Process time dimension for each coin
+        # Learn temporal patterns: price movements over time
         # -------------------------------------------------------
-        self.layers = nn.ModuleList([
+        self.temporal_mamba_layers = nn.ModuleList([
             Mamba(
                 d_model=hidden_dim,
                 d_state=d_state,
                 d_conv=d_conv,
                 expand=expand,
-            ) for _ in range(num_mamba_layers)
+            ) for _ in range(num_mamba_layers // 2)
+        ])
+        self.temporal_norms = nn.ModuleList([
+            RMSNorm(hidden_dim) for _ in range(num_mamba_layers // 2)
         ])
         
-        # Layer Normalization between blocks
-        self.norms = nn.ModuleList([RMSNorm(hidden_dim) for _ in range(num_mamba_layers)])
+        # -------------------------------------------------------
+        # 3. Spatial Mamba Layers
+        # Process coin dimension across time
+        # Learn cross-coin correlations: BTC affects ETH, etc.
+        # -------------------------------------------------------
+        self.spatial_mamba_layers = nn.ModuleList([
+            Mamba(
+                d_model=hidden_dim,
+                d_state=d_state,
+                d_conv=d_conv,
+                expand=expand,
+            ) for _ in range(num_mamba_layers // 2)
+        ])
+        self.spatial_norms = nn.ModuleList([
+            RMSNorm(hidden_dim) for _ in range(num_mamba_layers // 2)
+        ])
         
         # -------------------------------------------------------
-        # 3. Prediction Head
-        # Use the last time step state to predict returns
+        # 4. Final temporal aggregation
+        # Aggregate information across time for final prediction
+        # -------------------------------------------------------
+        self.temporal_pooling = nn.AdaptiveAvgPool1d(1)
+        
+        # -------------------------------------------------------
+        # 5. Prediction Head
+        # Predict future returns for each coin
         # -------------------------------------------------------
         self.final_norm = RMSNorm(hidden_dim)
-        self.head = nn.Sequential(
-            nn.Linear(hidden_dim, 64),
+        self.prediction_head = nn.Sequential(
+            nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(64, output_dim)
+            nn.Linear(hidden_dim, output_dim)
         )
         
         self.reset_parameters()
 
     def reset_parameters(self):
         """Initialize model parameters"""
-        # Initialize encoder
-        nn.init.xavier_uniform_(self.encoder.weight)
-        if self.encoder.bias is not None:
-            nn.init.zeros_(self.encoder.bias)
+        # Initialize projection
+        nn.init.xavier_uniform_(self.feature_projection.weight)
+        if self.feature_projection.bias is not None:
+            nn.init.zeros_(self.feature_projection.bias)
         
         # Initialize prediction head
-        for layer in self.head:
+        for layer in self.prediction_head:
             if isinstance(layer, nn.Linear):
                 nn.init.xavier_uniform_(layer.weight)
                 if layer.bias is not None:
@@ -124,7 +155,7 @@ class CryptoMamba(nn.Module):
 
     def forward(self, x):
         """
-        Forward pass
+        Forward pass with cross-coin correlation learning
         
         Args:
             x: Input tensor of shape (Batch, Time, Nodes, Features)
@@ -138,29 +169,67 @@ class CryptoMamba(nn.Module):
         # --- Step 0: Apply Normalization ---
         x = (x - self.input_mean) / (self.input_std + 1e-9)
         
-        # --- Step 1: Reshape for Mamba ---
-        # Mamba expects (Batch, Seq_Len, Dim) input
-        # Treat each coin as an independent sample
-        # (Batch * Nodes, Seq_Len, Features)
-        x = x.view(B * N, L, F)
+        # --- Step 1: Feature Projection ---
+        # Process each coin's features independently
+        # (B, L, N, F) -> (B, L, N, H)
+        x = self.feature_projection(x)
         
-        # --- Step 2: Feature Projection ---
-        x = self.encoder(x)  # (B*N, L, hidden_dim)
+        # --- Step 2: Temporal Processing ---
+        # Process time dimension for each coin
+        # Learn: "How does each coin's price change over time?"
         
-        # --- Step 3: Mamba Layers (with Residual Connection) ---
-        for layer, norm in zip(self.layers, self.norms):
-            # Pre-Norm & Residual
+        # Reshape to (B*N, L, H) to process each coin's time series
+        x = x.permute(0, 2, 1, 3).contiguous()  # (B, N, L, H)
+        x = x.view(B * N, L, self.hidden_dim)   # (B*N, L, H)
+        
+        # Apply temporal Mamba layers
+        for mamba_layer, norm in zip(self.temporal_mamba_layers, self.temporal_norms):
             x_norm = norm(x)
-            x = x + layer(x_norm)
+            x = x + mamba_layer(x_norm)  # Residual connection
         
-        # --- Step 4: Prediction ---
-        # Use only the last time step (t) information
-        x = self.final_norm(x)
-        last_state = x[:, -1, :]  # (B*N, hidden_dim)
+        # Reshape back to (B, N, L, H)
+        x = x.view(B, N, L, self.hidden_dim)
         
-        out = self.head(last_state)  # (B*N, 1)
+        # --- Step 3: Spatial Processing ---
+        # Process coin dimension across time
+        # Learn: "How do different coins correlate with each other?"
         
-        # --- Step 5: Reshape back to (Batch, Nodes) ---
-        predictions = out.view(B, N)
+        # For each time step, process relationships between coins
+        # Reshape to (B*L, N, H) to process coin relationships at each time
+        x = x.permute(0, 2, 1, 3).contiguous()  # (B, L, N, H)
+        x = x.view(B * L, N, self.hidden_dim)   # (B*L, N, H)
+        
+        # Apply spatial Mamba layers
+        for mamba_layer, norm in zip(self.spatial_mamba_layers, self.spatial_norms):
+            x_norm = norm(x)
+            x = x + mamba_layer(x_norm)  # Residual connection
+        
+        # Reshape back to (B, L, N, H)
+        x = x.view(B, L, N, self.hidden_dim)
+        
+        # --- Step 4: Temporal Aggregation ---
+        # Aggregate temporal information for final prediction
+        # (B, L, N, H) -> (B, N, H)
+        
+        # Permute to (B, N, H, L) for pooling
+        x = x.permute(0, 2, 3, 1).contiguous()  # (B, N, H, L)
+        x = x.view(B * N, self.hidden_dim, L)   # (B*N, H, L)
+        
+        # Global average pooling over time
+        x = self.temporal_pooling(x).squeeze(-1)  # (B*N, H)
+        
+        # Reshape to (B, N, H)
+        x = x.view(B, N, self.hidden_dim)
+        
+        # --- Step 5: Prediction ---
+        # Apply final normalization and prediction head
+        x = self.final_norm(x)  # (B, N, H)
+        
+        # Flatten for prediction head
+        x = x.view(B * N, self.hidden_dim)  # (B*N, H)
+        predictions = self.prediction_head(x)  # (B*N, 1)
+        
+        # Reshape to (B, N)
+        predictions = predictions.view(B, N)
         
         return predictions
