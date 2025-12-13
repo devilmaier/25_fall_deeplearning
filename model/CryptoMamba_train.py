@@ -399,7 +399,7 @@ def train():
         # --- Train Step ---
         model.train()
         train_loss = 0.0
-        train_loss_components = {'mse': 0.0, 'directional': 0.0, 'ic': 0.0, 'ic_value': 0.0}
+        train_loss_components = {'mse': 0.0, 'directional': 0.0, 'ic_loss': 0.0, 'ic_value': 0.0}
         
         for batch_idx, (x, y) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]")):
             x, y = x.to(CONFIG['device']), y.to(CONFIG['device'])
@@ -454,16 +454,18 @@ def train():
             num_batches = len(train_loader)
             print(f"\n  Train Loss Components:")
             if 'mse' in train_loss_components and train_loss_components['mse'] > 0:
-                print(f"    MSE:        {train_loss_components['mse'] / num_batches:.6f}")
+                print(f"    MSE:         {train_loss_components['mse'] / num_batches:.6f}")
             if 'directional' in train_loss_components and train_loss_components['directional'] > 0:
                 print(f"    Directional: {train_loss_components['directional'] / num_batches:.6f}")
+            if 'ic_loss' in train_loss_components and train_loss_components['ic_loss'] > 0:
+                print(f"    IC Loss:     {train_loss_components['ic_loss'] / num_batches:.6f}")
             if 'ic_value' in train_loss_components:
                 print(f"    IC Value:    {train_loss_components['ic_value'] / num_batches:.6f}")
 
         # --- Validation Step ---
         model.eval()
         val_loss = 0.0
-        val_loss_components = {'mse': 0.0, 'directional': 0.0, 'ic': 0.0, 'ic_value': 0.0}
+        val_loss_components = {'mse': 0.0, 'directional': 0.0, 'ic_loss': 0.0, 'ic_value': 0.0}
         
         with torch.no_grad():
             for x, y in tqdm(val_loader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Val]"):
@@ -496,9 +498,11 @@ def train():
             num_val_batches = len(val_loader)
             print(f"  Val Loss Components:")
             if 'mse' in val_loss_components and val_loss_components['mse'] > 0:
-                print(f"    MSE:        {val_loss_components['mse'] / num_val_batches:.6f}")
+                print(f"    MSE:         {val_loss_components['mse'] / num_val_batches:.6f}")
             if 'directional' in val_loss_components and val_loss_components['directional'] > 0:
                 print(f"    Directional: {val_loss_components['directional'] / num_val_batches:.6f}")
+            if 'ic_loss' in val_loss_components and val_loss_components['ic_loss'] > 0:
+                print(f"    IC Loss:     {val_loss_components['ic_loss'] / num_val_batches:.6f}")
             if 'ic_value' in val_loss_components:
                 print(f"    IC Value:    {val_loss_components['ic_value'] / num_val_batches:.6f}")
 
