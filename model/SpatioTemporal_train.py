@@ -17,15 +17,16 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # Configuration
 # ==========================================
 CONFIG = {
+    'mode': 'classification',  # 'regression' or 'classification'
     'data_dir': str(PROJECT_ROOT / 'data' / 'xy'),
-    'start_date': '2024-10-01',
-    'end_date': '2024-10-15',
+    'start_date': '2024-05-01',
+    'end_date': '2024-05-15',
     'top_n': 30,
     'num_nodes': 30,    # Number of nodes in graph
     'seq_len': 60,       # Time window size
     'input_dim': 480,   # Will be updated automatically based on features
     'hidden_dim': 64,   # CNN and Transformer hidden dimension
-    'output_dim': 1,    
+    'output_dim': 2,    # 2 for classification (binary), 1 for regression
     'num_transformer_layers': 2,  # Number of Transformer encoder layers
     'num_heads': 4,     # Number of attention heads
     'dropout': 0.2,
@@ -33,7 +34,7 @@ CONFIG = {
     'epochs': 10,
     'lr': 0.001,
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_44.json'),
+    'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_166.json'),
     'ban_list_path': str(PROJECT_ROOT / 'global_ban_dates.json'), # [NEW] Path to ban list
     'save_path': str(PROJECT_ROOT / 'best_spatiotemporal_model.pt'),
     'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / 'spatiotfm'),
@@ -77,8 +78,15 @@ def compute_stats(loader):
 
 def train():
     print(f"[INFO] Device: {CONFIG['device']}")
+    print(f"[INFO] Mode: {CONFIG['mode'].upper()}")
     print(f"[INFO] Model: SpatioTemporalTransformer (1D-CNN -> Transformer with Residual)")
     print(f"[INFO] Loading data from {CONFIG['start_date']} to {CONFIG['end_date']}")
+    
+    # Adjust output_dim based on mode
+    if CONFIG['mode'] == 'classification':
+        CONFIG['output_dim'] = 2  # Binary classification
+    else:  # regression
+        CONFIG['output_dim'] = 1
     
     # 1. Prepare Data Loaders (with parallel dataset construction)
     train_loader, val_loader, test_loader, feature_dim = get_spatiotemporal_loaders(
@@ -119,7 +127,14 @@ def train():
     
     print(f"[INFO] Model initialized with {sum(p.numel() for p in model.parameters())} parameters")
     
-    criterion = nn.MSELoss()
+    # Select loss function based on mode
+    if CONFIG['mode'] == 'classification':
+        criterion = nn.CrossEntropyLoss()
+        print(f"[INFO] Using CrossEntropyLoss for classification")
+    else:  # regression
+        criterion = nn.MSELoss()
+        print(f"[INFO] Using MSELoss for regression")
+    
     optimizer = optim.Adam(model.parameters(), lr=CONFIG['lr'])
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5)
     
@@ -135,6 +150,8 @@ def train():
         train_final_loss = 0.0
         train_transformer_loss = 0.0
         train_cnn_loss = 0.0
+        train_correct = 0
+        train_total = 0
         
         for x, y in tqdm(train_loader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]"):
             x, y = x.to(CONFIG['device']), y.to(CONFIG['device'])
@@ -142,14 +159,38 @@ def train():
             optimizer.zero_grad()
             
             # Forward pass - model returns (final_pred, transformer_pred, cnn_pred)
-            # All have shape (Batch, Nodes)
             final_pred, transformer_pred, cnn_pred = model(x)
             
-            # y shape: (Batch, Nodes)
-            # Calculate losses
-            final_loss = criterion(final_pred, y)
-            transformer_loss = criterion(transformer_pred, y)
-            cnn_loss = criterion(cnn_pred, y)
+            if CONFIG['mode'] == 'classification':
+                # Convert y to binary labels: positive -> 1, negative/zero -> 0
+                y_labels = (y > 0).long()  # Shape: (Batch, Nodes)
+                
+                # Reshape for loss calculation: (Batch*Nodes, 2) and (Batch*Nodes)
+                batch_size, num_nodes, num_classes = final_pred.shape
+                final_pred_flat = final_pred.view(-1, num_classes)
+                transformer_pred_flat = transformer_pred.view(-1, num_classes)
+                cnn_pred_flat = cnn_pred.view(-1, num_classes)
+                y_labels_flat = y_labels.view(-1)
+                
+                # Calculate losses
+                final_loss = criterion(final_pred_flat, y_labels_flat)
+                transformer_loss = criterion(transformer_pred_flat, y_labels_flat)
+                cnn_loss = criterion(cnn_pred_flat, y_labels_flat)
+                
+                # Calculate accuracy
+                pred_labels = torch.argmax(final_pred, dim=2)  # Shape: (Batch, Nodes)
+                train_correct += (pred_labels == y_labels).sum().item()
+                train_total += y_labels.numel()
+            else:  # regression
+                # Squeeze output for regression: (Batch, Nodes, 1) -> (Batch, Nodes)
+                final_pred = final_pred.squeeze(-1)
+                transformer_pred = transformer_pred.squeeze(-1)
+                cnn_pred = cnn_pred.squeeze(-1)
+                
+                # Calculate losses
+                final_loss = criterion(final_pred, y)
+                transformer_loss = criterion(transformer_pred, y)
+                cnn_loss = criterion(cnn_pred, y)
             
             # Combined loss: final prediction + auxiliary losses
             loss = final_loss + \
@@ -172,6 +213,7 @@ def train():
         avg_train_final_loss = train_final_loss / len(train_loader)
         avg_train_transformer_loss = train_transformer_loss / len(train_loader)
         avg_train_cnn_loss = train_cnn_loss / len(train_loader)
+        train_accuracy = 100.0 * train_correct / train_total if train_total > 0 else 0.0
 
         # --- Validation Step ---
         model.eval()
@@ -179,6 +221,8 @@ def train():
         val_final_loss = 0.0
         val_transformer_loss = 0.0
         val_cnn_loss = 0.0
+        val_correct = 0
+        val_total = 0
         
         with torch.no_grad():
             for x, y in tqdm(val_loader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Val]"):
@@ -186,9 +230,34 @@ def train():
                 
                 final_pred, transformer_pred, cnn_pred = model(x)
                 
-                final_loss = criterion(final_pred, y)
-                transformer_loss = criterion(transformer_pred, y)
-                cnn_loss = criterion(cnn_pred, y)
+                if CONFIG['mode'] == 'classification':
+                    # Convert y to binary labels
+                    y_labels = (y > 0).long()
+                    
+                    # Reshape for loss calculation
+                    batch_size, num_nodes, num_classes = final_pred.shape
+                    final_pred_flat = final_pred.view(-1, num_classes)
+                    transformer_pred_flat = transformer_pred.view(-1, num_classes)
+                    cnn_pred_flat = cnn_pred.view(-1, num_classes)
+                    y_labels_flat = y_labels.view(-1)
+                    
+                    final_loss = criterion(final_pred_flat, y_labels_flat)
+                    transformer_loss = criterion(transformer_pred_flat, y_labels_flat)
+                    cnn_loss = criterion(cnn_pred_flat, y_labels_flat)
+                    
+                    # Calculate accuracy
+                    pred_labels = torch.argmax(final_pred, dim=2)
+                    val_correct += (pred_labels == y_labels).sum().item()
+                    val_total += y_labels.numel()
+                else:  # regression
+                    # Squeeze output for regression
+                    final_pred = final_pred.squeeze(-1)
+                    transformer_pred = transformer_pred.squeeze(-1)
+                    cnn_pred = cnn_pred.squeeze(-1)
+                    
+                    final_loss = criterion(final_pred, y)
+                    transformer_loss = criterion(transformer_pred, y)
+                    cnn_loss = criterion(cnn_pred, y)
                 
                 loss = final_loss + \
                        CONFIG['transformer_loss_weight'] * transformer_loss + \
@@ -203,15 +272,22 @@ def train():
         avg_val_final_loss = val_final_loss / len(val_loader)
         avg_val_transformer_loss = val_transformer_loss / len(val_loader)
         avg_val_cnn_loss = val_cnn_loss / len(val_loader)
+        val_accuracy = 100.0 * val_correct / val_total if val_total > 0 else 0.0
         
         # Step scheduler
         scheduler.step(avg_val_loss)
         
         print(f"Epoch [{epoch+1}/{CONFIG['epochs']}]")
-        print(f"  Train - Total: {avg_train_loss:.6f} | Final: {avg_train_final_loss:.6f} | "
-              f"Transformer: {avg_train_transformer_loss:.6f} | CNN: {avg_train_cnn_loss:.6f}")
-        print(f"  Val   - Total: {avg_val_loss:.6f} | Final: {avg_val_final_loss:.6f} | "
-              f"Transformer: {avg_val_transformer_loss:.6f} | CNN: {avg_val_cnn_loss:.6f}")
+        if CONFIG['mode'] == 'classification':
+            print(f"  Train - Loss: {avg_train_loss:.6f} | Accuracy: {train_accuracy:.2f}%")
+            print(f"  Train - Final: {avg_train_final_loss:.6f} | Transformer: {avg_train_transformer_loss:.6f} | CNN: {avg_train_cnn_loss:.6f}")
+            print(f"  Val   - Loss: {avg_val_loss:.6f} | Accuracy: {val_accuracy:.2f}%")
+            print(f"  Val   - Final: {avg_val_final_loss:.6f} | Transformer: {avg_val_transformer_loss:.6f} | CNN: {avg_val_cnn_loss:.6f}")
+        else:  # regression
+            print(f"  Train - MSE: {avg_train_loss:.6f}")
+            print(f"  Train - Final: {avg_train_final_loss:.6f} | Transformer: {avg_train_transformer_loss:.6f} | CNN: {avg_train_cnn_loss:.6f}")
+            print(f"  Val   - MSE: {avg_val_loss:.6f}")
+            print(f"  Val   - Final: {avg_val_final_loss:.6f} | Transformer: {avg_val_transformer_loss:.6f} | CNN: {avg_val_cnn_loss:.6f}")
 
         # Save Best Model
         if avg_val_loss < best_val_loss:
@@ -226,7 +302,10 @@ def train():
                 'input_std': input_std
             }, CONFIG['save_path'])
             model_saved = True
-            print(f"  -> Model saved (Val loss improved)")
+            if CONFIG['mode'] == 'classification':
+                print(f"  -> Model saved (Val loss improved: {avg_val_loss:.6f}, Val accuracy: {val_accuracy:.2f}%)")
+            else:
+                print(f"  -> Model saved (Val loss improved: {avg_val_loss:.6f})")
 
     # 5. Final Evaluation (Test Set)
     print("\n[INFO] Evaluating on Test Set...")
@@ -245,9 +324,9 @@ def train():
     test_final_loss = 0.0
     test_transformer_loss = 0.0
     test_cnn_loss = 0.0
+    test_correct = 0
+    test_total = 0
     final_preds = []
-    transformer_preds = []
-    cnn_preds = []
     targets = []
     
     with torch.no_grad():
@@ -256,9 +335,42 @@ def train():
             
             final_pred, transformer_pred, cnn_pred = model(x)
             
-            final_loss = criterion(final_pred, y)
-            transformer_loss = criterion(transformer_pred, y)
-            cnn_loss = criterion(cnn_pred, y)
+            if CONFIG['mode'] == 'classification':
+                # Convert y to binary labels
+                y_labels = (y > 0).long()
+                
+                # Reshape for loss calculation
+                batch_size, num_nodes, num_classes = final_pred.shape
+                final_pred_flat = final_pred.view(-1, num_classes)
+                transformer_pred_flat = transformer_pred.view(-1, num_classes)
+                cnn_pred_flat = cnn_pred.view(-1, num_classes)
+                y_labels_flat = y_labels.view(-1)
+                
+                final_loss = criterion(final_pred_flat, y_labels_flat)
+                transformer_loss = criterion(transformer_pred_flat, y_labels_flat)
+                cnn_loss = criterion(cnn_pred_flat, y_labels_flat)
+                
+                # Calculate accuracy
+                pred_labels = torch.argmax(final_pred, dim=2)
+                test_correct += (pred_labels == y_labels).sum().item()
+                test_total += y_labels.numel()
+                
+                # Collect predictions and true labels for analysis
+                final_preds.extend(pred_labels.cpu().numpy().flatten())
+                targets.extend(y_labels.cpu().numpy().flatten())
+            else:  # regression
+                # Squeeze output for regression
+                final_pred = final_pred.squeeze(-1)
+                transformer_pred = transformer_pred.squeeze(-1)
+                cnn_pred = cnn_pred.squeeze(-1)
+                
+                final_loss = criterion(final_pred, y)
+                transformer_loss = criterion(transformer_pred, y)
+                cnn_loss = criterion(cnn_pred, y)
+                
+                # Collect predictions and targets for correlation
+                final_preds.extend(final_pred.cpu().numpy().flatten())
+                targets.extend(y.cpu().numpy().flatten())
             
             loss = final_loss + \
                    CONFIG['transformer_loss_weight'] * transformer_loss + \
@@ -268,33 +380,57 @@ def train():
             test_final_loss += final_loss.item()
             test_transformer_loss += transformer_loss.item()
             test_cnn_loss += cnn_loss.item()
-            
-            # Flatten predictions and targets for correlation calculation
-            final_preds.extend(final_pred.cpu().numpy().flatten())
-            transformer_preds.extend(transformer_pred.cpu().numpy().flatten())
-            cnn_preds.extend(cnn_pred.cpu().numpy().flatten())
-            targets.extend(y.cpu().numpy().flatten())
 
     avg_test_loss = test_loss / len(test_loader)
     avg_test_final_loss = test_final_loss / len(test_loader)
     avg_test_transformer_loss = test_transformer_loss / len(test_loader)
     avg_test_cnn_loss = test_cnn_loss / len(test_loader)
+    test_accuracy = 100.0 * test_correct / test_total if test_total > 0 else 0.0
     
     print(f"\n{'='*70}")
     print(f"Final Test Results:")
-    print(f"  Total MSE: {avg_test_loss:.6f}")
-    print(f"  Final (Residual) MSE: {avg_test_final_loss:.6f}")
-    print(f"  Transformer MSE: {avg_test_transformer_loss:.6f}")
-    print(f"  CNN MSE: {avg_test_cnn_loss:.6f}")
     
-    # Calculate Information Coefficient (IC)
-    if len(final_preds) > 1:
-        final_corr = np.corrcoef(final_preds, targets)[0, 1]
-        transformer_corr = np.corrcoef(transformer_preds, targets)[0, 1]
-        cnn_corr = np.corrcoef(cnn_preds, targets)[0, 1]
-        print(f"  Final (Residual) IC: {final_corr:.4f}")
-        print(f"  Transformer IC: {transformer_corr:.4f}")
-        print(f"  CNN IC: {cnn_corr:.4f}")
+    if CONFIG['mode'] == 'classification':
+        print(f"  Test Loss: {avg_test_loss:.6f}")
+        print(f"  Test Accuracy: {test_accuracy:.2f}%")
+        print(f"  Final Loss: {avg_test_final_loss:.6f}")
+        print(f"  Transformer Loss: {avg_test_transformer_loss:.6f}")
+        print(f"  CNN Loss: {avg_test_cnn_loss:.6f}")
+        
+        # Calculate classification metrics
+        if len(final_preds) > 1:
+            final_preds = np.array(final_preds)
+            targets = np.array(targets)
+            
+            # Calculate accuracy again for verification
+            accuracy = 100.0 * (final_preds == targets).sum() / len(targets)
+            
+            # Calculate precision, recall for class 1 (positive returns)
+            tp = ((final_preds == 1) & (targets == 1)).sum()
+            fp = ((final_preds == 1) & (targets == 0)).sum()
+            fn = ((final_preds == 0) & (targets == 1)).sum()
+            
+            precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+            recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+            f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+            
+            print(f"  Accuracy (verified): {accuracy:.2f}%")
+            print(f"  Precision (positive class): {precision:.4f}")
+            print(f"  Recall (positive class): {recall:.4f}")
+            print(f"  F1 Score: {f1:.4f}")
+    else:  # regression
+        print(f"  Test MSE: {avg_test_loss:.6f}")
+        print(f"  Final MSE: {avg_test_final_loss:.6f}")
+        print(f"  Transformer MSE: {avg_test_transformer_loss:.6f}")
+        print(f"  CNN MSE: {avg_test_cnn_loss:.6f}")
+        
+        # Calculate Information Coefficient (IC) for regression
+        if len(final_preds) > 1:
+            final_preds = np.array(final_preds)
+            targets = np.array(targets)
+            ic = np.corrcoef(final_preds, targets)[0, 1]
+            print(f"  Information Coefficient (IC): {ic:.4f}")
+    
     print(f"{'='*70}")
 
 if __name__ == "__main__":

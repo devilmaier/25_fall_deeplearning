@@ -17,6 +17,7 @@ class SpatioTemporalTransformer(nn.Module):
         
         self.num_nodes = num_nodes
         self.hidden_dim = hidden_dim
+        self.output_dim = output_dim
         
         # -------------------------------------------------------
         # 0. In-model Normalization
@@ -148,15 +149,16 @@ class SpatioTemporalTransformer(nn.Module):
         # 1. Transformer Prediction (Main - after learning node relationships)
         # Flatten to (N*V, hidden_dim)
         transformer_out_flat = transformer_embedding.reshape(N * V, -1)
-        transformer_pred = self.transformer_head(transformer_out_flat)
-        transformer_pred = transformer_pred.reshape(N, V)  # (Batch, Nodes)
+        transformer_pred = self.transformer_head(transformer_out_flat)  # (N*V, output_dim)
+        transformer_pred = transformer_pred.reshape(N, V, self.output_dim)  # (Batch, Nodes, output_dim)
         
         # 2. CNN Prediction (Auxiliary - before transformer)
         cnn_out_flat = cnn_embedding.reshape(N * V, -1)
-        cnn_pred = self.cnn_head(cnn_out_flat)
-        cnn_pred = cnn_pred.reshape(N, V)  # (Batch, Nodes)
+        cnn_pred = self.cnn_head(cnn_out_flat)  # (N*V, output_dim)
+        cnn_pred = cnn_pred.reshape(N, V, self.output_dim)  # (Batch, Nodes, output_dim)
         
         # 3. Residual Prediction (Combine both)
+        # For classification: combine logits before softmax
         # Final prediction = Transformer prediction + residual from CNN prediction
         final_pred = transformer_pred + 0.3 * cnn_pred  # Residual connection with weight
         
