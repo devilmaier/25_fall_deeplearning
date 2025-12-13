@@ -17,12 +17,12 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # Configuration
 # ==========================================
 CONFIG = {
-    'data_dir': str(PROJECT_ROOT / 'data'),
-    'start_date': '2024-02-01',
-    'end_date': '2024-02-15',
+    'data_dir': str(PROJECT_ROOT / 'data' / 'xy'),
+    'start_date': '2024-10-01',
+    'end_date': '2024-10-15',
     'top_n': 30,
     'num_nodes': 30,    # Number of nodes in graph
-    'seq_len': 9,       # Time window size
+    'seq_len': 60,       # Time window size
     'input_dim': 480,   # Will be updated automatically based on features
     'hidden_dim': 64,   # CNN and Transformer hidden dimension
     'output_dim': 1,    
@@ -78,8 +78,9 @@ def compute_stats(loader):
 def train():
     print(f"[INFO] Device: {CONFIG['device']}")
     print(f"[INFO] Model: SpatioTemporalTransformer (1D-CNN -> Transformer with Residual)")
+    print(f"[INFO] Loading data from {CONFIG['start_date']} to {CONFIG['end_date']}")
     
-    # 1. Prepare Data Loaders
+    # 1. Prepare Data Loaders (with parallel dataset construction)
     train_loader, val_loader, test_loader, feature_dim = get_spatiotemporal_loaders(
         data_dir=CONFIG['data_dir'],
         start_date=CONFIG['start_date'],
@@ -91,6 +92,7 @@ def train():
         batch_size=CONFIG['batch_size'],
         ban_list_path=CONFIG['ban_list_path'],
         export_path=CONFIG['export_path'],
+        dataset_workers=24  # NEW: Parallel dataset construction for speedup
     )
     CONFIG['input_dim'] = feature_dim
     print(f"[INFO] Input feature dim: {feature_dim}")

@@ -5,17 +5,61 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from tqdm import tqdm
+from multiprocessing import Pool, cpu_count
+from functools import partial
+
+
+def process_timestamp_group_fast(args):
+    """
+    Optimized version using pre-grouped data for parallel processing.
+    Much faster than filtering DataFrame each time.
+    """
+    ts, ts_group, feature_cols, target_col, num_nodes = args
+    
+    try:
+        symbols = ts_group['symbol'].unique()
+        
+        if len(symbols) < num_nodes:
+            return None
+        
+        symbols = sorted(symbols)[:num_nodes]
+        
+        # Vectorized approach
+        mask = ts_group['symbol'].isin(symbols)
+        filtered_group = ts_group[mask].set_index('symbol')
+        filtered_group = filtered_group.reindex(symbols)
+        
+        features_array = filtered_group[feature_cols].values.astype(np.float32)
+        targets_array = filtered_group[target_col].values.astype(np.float32)
+        
+        return {
+            'ts': ts,
+            'symbols': symbols,
+            'features': features_array,
+            'targets': targets_array
+        }
+    except Exception as e:
+        return None
 
 
 class SpatioTemporalDataset(Dataset):
     """
-    PyTorch Dataset for SpatioTemporalTransformer model.
+    PyTorch Dataset for SpatioTemporalTransformer model with PARALLEL initialization.
     Creates graph-structured data where each sample contains multiple symbols (nodes)
     at the same time window.
     
+    Uses multiprocessing to speed up dataset construction by processing
+    multiple timestamps simultaneously across multiple CPU cores.
+    
     Output shape: (Batch, Time, Nodes, Features)
     """
-    def __init__(self, df, feature_cols, target_col, seq_len=60, num_nodes=30, mode='train'):
+    def __init__(self, df, feature_cols, target_col, seq_len=60, num_nodes=30, 
+                 mode='train', num_workers=None):
+        """
+        Args:
+            num_workers: Number of parallel workers. If None, uses cpu_count().
+                        Set to 1 to disable parallel processing.
+        """
         self.seq_len = seq_len
         self.num_nodes = num_nodes
         self.target_col = target_col
@@ -29,49 +73,83 @@ class SpatioTemporalDataset(Dataset):
         print(f"[{mode.upper()}] Cleaned NaNs: {init_len} -> {len(df)} rows (Dropped {init_len - len(df)})")
 
         # Sort by time and symbol
-        df = df.sort_values(['start_time_ms', 'symbol'])
+        df = df.sort_values(['start_time_ms', 'symbol']).reset_index(drop=True)
         
         # Get unique timestamps
         self.timestamps = df['start_time_ms'].unique()
         self.timestamps.sort()
         
-        # Group data by timestamp
-        self.time_groups = {}
-        print(f"[INFO] Building {mode} dataset (Graph Mode)...")
-        for ts in tqdm(self.timestamps, desc=f"Building {mode}"):
-            ts_data = df[df['start_time_ms'] == ts]
-            symbols = ts_data['symbol'].unique()
-            
-            if len(symbols) >= num_nodes:
-                symbols = sorted(symbols)[:num_nodes]
-                
-                features_dict = {}
-                targets_dict = {}
-                
-                for sym in symbols:
-                    sym_data = ts_data[ts_data['symbol'] == sym].iloc[0]
-                    features_dict[sym] = sym_data[feature_cols].values.astype(np.float32)
-                    targets_dict[sym] = sym_data[target_col].astype(np.float32)
-                
-                self.time_groups[ts] = {
-                    'symbols': symbols,
-                    'features': features_dict,
-                    'targets': targets_dict
-                }
+        # Determine number of workers
+        if num_workers is None:
+            num_workers = cpu_count()
+        num_workers = max(1, min(num_workers, cpu_count()))
         
+        print(f"[INFO] Building {mode} dataset (PARALLEL Mode with {num_workers} workers)...")
+        
+        # =====================================================================
+        # PARALLEL PROCESSING
+        # =====================================================================
+        if num_workers > 1:
+            # Pre-group data for faster processing
+            grouped = df.groupby('start_time_ms')
+            
+            # Prepare arguments for parallel processing
+            args_list = [
+                (ts, grouped.get_group(ts), feature_cols, target_col, num_nodes)
+                for ts in self.timestamps
+            ]
+            
+            # Process in parallel
+            with Pool(processes=num_workers) as pool:
+                results = list(tqdm(
+                    pool.imap(process_timestamp_group_fast, args_list),
+                    total=len(self.timestamps),
+                    desc=f"Building {mode}"
+                ))
+            
+            # Filter out None results and build time_groups
+            self.time_groups = {}
+            for result in results:
+                if result is not None:
+                    ts = result['ts']
+                    self.time_groups[ts] = {
+                        'symbols': result['symbols'],
+                        'features': result['features'],
+                        'targets': result['targets']
+                    }
+        else:
+            # Sequential processing (fallback)
+            print(f"[INFO] Using sequential processing (num_workers=1)")
+            self.time_groups = {}
+            grouped = df.groupby('start_time_ms')
+            
+            for ts in tqdm(self.timestamps, desc=f"Building {mode}"):
+                result = process_timestamp_group_fast(
+                    (ts, grouped.get_group(ts), feature_cols, target_col, num_nodes)
+                )
+                if result is not None:
+                    self.time_groups[ts] = {
+                        'symbols': result['symbols'],
+                        'features': result['features'],
+                        'targets': result['targets']
+                    }
+        
+        # =====================================================================
         # Create valid sample indices (sequences of timestamps)
+        # =====================================================================
         self.sample_indices = []
+        valid_timestamps = sorted(self.time_groups.keys())
         
-        for i in range(len(self.timestamps) - seq_len + 1):
-            time_window = self.timestamps[i:i + seq_len]
+        for i in range(len(valid_timestamps) - seq_len + 1):
+            time_window = valid_timestamps[i:i + seq_len]
             
-            if all(ts in self.time_groups for ts in time_window):
-                symbol_sets = [set(self.time_groups[ts]['symbols']) for ts in time_window]
-                common_symbols = set.intersection(*symbol_sets)
-                
-                if len(common_symbols) >= num_nodes:
-                    common_symbols = sorted(list(common_symbols))[:num_nodes]
-                    self.sample_indices.append((i, common_symbols))
+            # Check if all symbols are present in all timestamps
+            symbol_sets = [set(self.time_groups[ts]['symbols']) for ts in time_window]
+            common_symbols = set.intersection(*symbol_sets)
+            
+            if len(common_symbols) >= num_nodes:
+                common_symbols = sorted(list(common_symbols))[:num_nodes]
+                self.sample_indices.append((i, common_symbols, valid_timestamps))
         
         print(f"[{mode.upper()}] Created {len(self.sample_indices)} valid graph sequences")
 
@@ -79,8 +157,8 @@ class SpatioTemporalDataset(Dataset):
         return len(self.sample_indices)
 
     def __getitem__(self, idx):
-        start_idx, symbols = self.sample_indices[idx]
-        time_window = self.timestamps[start_idx:start_idx + self.seq_len]
+        start_idx, symbols, valid_timestamps = self.sample_indices[idx]
+        time_window = valid_timestamps[start_idx:start_idx + self.seq_len]
         
         num_features = len(self.feature_cols)
         x = np.zeros((self.seq_len, self.num_nodes, num_features), dtype=np.float32)
@@ -88,12 +166,26 @@ class SpatioTemporalDataset(Dataset):
         
         for t_idx, ts in enumerate(time_window):
             group = self.time_groups[ts]
-            for n_idx, sym in enumerate(symbols):
-                x[t_idx, n_idx, :] = group['features'][sym]
-                if t_idx == self.seq_len - 1:
-                    y[n_idx] = group['targets'][sym]
+            
+            # Handle both array and dict formats
+            if isinstance(group['features'], np.ndarray):
+                # Array format (from optimized version)
+                symbol_to_idx = {sym: idx for idx, sym in enumerate(group['symbols'])}
+                for n_idx, sym in enumerate(symbols):
+                    if sym in symbol_to_idx:
+                        source_idx = symbol_to_idx[sym]
+                        x[t_idx, n_idx, :] = group['features'][source_idx]
+                        if t_idx == self.seq_len - 1:
+                            y[n_idx] = group['targets'][source_idx]
+            else:
+                # Dict format (from original version)
+                for n_idx, sym in enumerate(symbols):
+                    if sym in group['features']:
+                        x[t_idx, n_idx, :] = group['features'][sym]
+                        if t_idx == self.seq_len - 1:
+                            y[n_idx] = group['targets'][sym]
         
-        return torch.tensor(x), torch.tensor(y)
+        return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 
 
 
@@ -109,10 +201,17 @@ def get_spatiotemporal_loaders(
     batch_size=32, 
     num_workers=4,
     ban_list_path=None,
-    export_path=None    # <-- ⭐ 추가됨
+    export_path=None,
+    dataset_workers=None  # NEW: Number of workers for parallel dataset construction
 ):
     """
-    Function to load data for SpatioTemporalTransformer model and return DataLoaders.
+    Function to load data for SpatioTemporalTransformer model with parallel dataset construction.
+    
+    Args:
+        dataset_workers: Number of parallel workers for building dataset.
+                        If None, uses all available CPU cores.
+                        Set to 1 to disable parallel processing.
+        num_workers: Number of workers for DataLoader (different from dataset_workers!)
     """
 
     # =====================================================================
@@ -138,9 +237,19 @@ def get_spatiotemporal_loaders(
             seq_len  = meta["seq_len"]
             num_nodes = meta["num_nodes"]
 
-            train_ds = SpatioTemporalDataset(train_df, features, target_col, seq_len, num_nodes, 'train')
-            val_ds   = SpatioTemporalDataset(val_df,   features, target_col, seq_len, num_nodes, 'val')
-            test_ds  = SpatioTemporalDataset(test_df,  features, target_col, seq_len, num_nodes, 'test')
+            # Use parallel dataset construction
+            train_ds = SpatioTemporalDataset(
+                train_df, features, target_col, seq_len, num_nodes, 'train',
+                num_workers=dataset_workers
+            )
+            val_ds = SpatioTemporalDataset(
+                val_df, features, target_col, seq_len, num_nodes, 'val',
+                num_workers=dataset_workers
+            )
+            test_ds = SpatioTemporalDataset(
+                test_df, features, target_col, seq_len, num_nodes, 'test',
+                num_workers=dataset_workers
+            )
 
             return (
                 DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers),
@@ -186,7 +295,9 @@ def get_spatiotemporal_loaders(
     all_dates = pd.date_range(start_date, end_date).strftime("%Y-%m-%d").tolist()
     dates = [d for d in all_dates if d not in missing_dates]
 
-    print(f"[ST LOADER] Loading {len(dates)} files...")
+    print(f"[ST LOADER] Date range: {start_date} to {end_date}")
+    print(f"[ST LOADER] Total dates in range: {len(all_dates)}")
+    print(f"[ST LOADER] Loading {len(dates)} files (after excluding {len(all_dates) - len(dates)} banned dates)...")
     df_list = []
     
     for d in dates:
@@ -203,11 +314,13 @@ def get_spatiotemporal_loaders(
     if not df_list:
         raise FileNotFoundError("No valid data files loaded.")
 
+    print(f"[ST LOADER] Successfully loaded {len(df_list)} files")
+
     full_df = pd.concat(df_list, ignore_index=True)
 
-    # Auto-detect features
+    # Auto-detect features (use _neut feature)
     if features is None:
-        features = [c for c in full_df.columns if c.startswith("x_")]
+        features = [c for c in full_df.columns if c.endswith('_neut')]
     else:
         features = [f for f in features if f in full_df.columns]
 
@@ -255,11 +368,20 @@ def get_spatiotemporal_loaders(
         print(f"[EXPORT] Saved dataset to: {export_path}")
 
     # =====================================================================
-    # 6. Dataset + Loader
+    # 6. Dataset + Loader (with parallel construction)
     # =====================================================================
-    train_ds = SpatioTemporalDataset(train_df, features, target_col, seq_len, num_nodes, 'train')
-    val_ds   = SpatioTemporalDataset(val_df,   features, target_col, seq_len, num_nodes, 'val')
-    test_ds  = SpatioTemporalDataset(test_df,  features, target_col, seq_len, num_nodes, 'test')
+    train_ds = SpatioTemporalDataset(
+        train_df, features, target_col, seq_len, num_nodes, 'train',
+        num_workers=dataset_workers
+    )
+    val_ds = SpatioTemporalDataset(
+        val_df, features, target_col, seq_len, num_nodes, 'val',
+        num_workers=dataset_workers
+    )
+    test_ds = SpatioTemporalDataset(
+        test_df, features, target_col, seq_len, num_nodes, 'test',
+        num_workers=dataset_workers
+    )
 
     return (
         DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers),
