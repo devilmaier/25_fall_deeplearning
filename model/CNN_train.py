@@ -8,6 +8,7 @@ import random
 import gc
 from pathlib import Path
 from tqdm import tqdm
+import pandas as pd
 
 from CNN_dataloader import get_loaders
 from CNN import TimeSeries1DCNN
@@ -288,9 +289,138 @@ def hyperparam_search(
         print(f"[HSEARCH] Trial {run_idx} done. IC: {metrics['test_corr']:.4f}")
 
 
+def rolling_window_train(base_start_date='2024-10-01', num_windows=5, window_months=1):
+    """
+    Train model with rolling window dates.
+    Each window shifts by 1 month from the previous one.
+    
+    Args:
+        base_start_date: Starting date for first window (format: 'YYYY-MM-DD')
+        num_windows: Number of windows to train (default: 5)
+        window_months: Number of months for each window (default: 1)
+    """
+    print(f"[ROLLING] Starting rolling window training")
+    print(f"[ROLLING] Base start date: {base_start_date}")
+    print(f"[ROLLING] Number of windows: {num_windows}")
+    print(f"[ROLLING] Window size: {window_months} month(s)")
+    print("="*80)
+    
+    results = []
+    start_date = pd.to_datetime(base_start_date)
+    
+    for window_idx in range(num_windows):
+        window_start = start_date + pd.DateOffset(months=window_idx)
+        window_end = window_start + pd.DateOffset(months=window_months)
+        
+        window_start_str = window_start.strftime('%Y-%m-%d')
+        window_end_str = window_end.strftime('%Y-%m-%d')
+        
+        print(f"\n{'='*80}")
+        print(f"[ROLLING] Window {window_idx + 1}/{num_windows}")
+        print(f"[ROLLING] Date range: {window_start_str} to {window_end_str}")
+        print(f"{'='*80}\n")
+        
+        dataset_folder = f"cnn_{window_start_str}_to_{window_end_str}"
+        
+        train_end = window_start + pd.DateOffset(months=window_months * 0.7)
+        val_start = train_end
+        val_end = window_start + pd.DateOffset(months=window_months * 0.85)
+        test_start = val_end
+        
+        overrides = {
+            'start_date': window_start_str,
+            'end_date': window_end_str,
+            'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / dataset_folder),
+            'save_path': str(PROJECT_ROOT / 'models' / f'best_model_window_{window_idx + 1}.pt'),
+            'train_start_date': window_start_str,
+            'train_end_date': train_end.strftime('%Y-%m-%d'),
+            'val_start_date': val_start.strftime('%Y-%m-%d'),
+            'val_end_date': val_end.strftime('%Y-%m-%d'),
+            'test_start_date': test_start.strftime('%Y-%m-%d'),
+            'test_end_date': window_end_str,
+        }
+        
+        try:
+            metrics = train_with_overrides(overrides)
+            
+            export_path = overrides['export_path']
+            meta_path = os.path.join(export_path, 'meta.json')
+            
+            meta_info = {}
+            if os.path.exists(meta_path):
+                with open(meta_path, 'r') as f:
+                    meta_info = json.load(f)
+            else:
+                meta_info = {
+                    'feature_list': CONFIG.get('feature_list', ''),
+                    'target_col': 'y_60m',
+                    'seq_len': CONFIG['seq_len'],
+                    'start_date': window_start_str,
+                    'end_date': window_end_str,
+                    'top_n': CONFIG['top_n'],
+                    'scaled': True,
+                    'train_start_date': overrides['train_start_date'],
+                    'train_end_date': overrides['train_end_date'],
+                    'val_start_date': overrides['val_start_date'],
+                    'val_end_date': overrides['val_end_date'],
+                    'test_start_date': overrides['test_start_date'],
+                    'test_end_date': overrides['test_end_date'],
+                }
+                os.makedirs(export_path, exist_ok=True)
+                with open(meta_path, 'w') as f:
+                    json.dump(meta_info, f, indent=2)
+                print(f"[ROLLING] Meta info saved to: {meta_path}")
+            
+            metrics['window_idx'] = window_idx + 1
+            metrics['start_date'] = window_start_str
+            metrics['end_date'] = window_end_str
+            metrics['export_path'] = export_path
+            metrics['meta'] = meta_info
+            results.append(metrics)
+            
+            print(f"\n[ROLLING] Window {window_idx + 1} completed:")
+            print(f"  Test MSE: {metrics['test_loss']:.6f}")
+            print(f"  Test IC: {metrics['test_corr']:.4f}")
+            
+        except Exception as e:
+            print(f"[ERROR] Window {window_idx + 1} failed: {e}")
+            results.append({
+                'window_idx': window_idx + 1,
+                'start_date': window_start_str,
+                'end_date': window_end_str,
+                'export_path': overrides.get('export_path', ''),
+                'error': str(e)
+            })
+        
+        gc.collect()
+        torch.cuda.empty_cache()
+    
+    print(f"\n{'='*80}")
+    print(f"[ROLLING] All windows completed!")
+    print(f"{'='*80}\n")
+    
+    result_path = PROJECT_ROOT / "results" / "rolling_window_results.json"
+    result_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(result_path, "w") as f:
+        json.dump(results, f, indent=2)
+    
+    print(f"[ROLLING] Results saved to: {result_path}")
+    
+    print("\n[ROLLING] Summary:")
+    for i, r in enumerate(results, 1):
+        if 'error' not in r:
+            print(f"  Window {i} ({r['start_date']} ~ {r['end_date']}): "
+                  f"IC={r['test_corr']:.4f}, MSE={r['test_loss']:.6f}")
+        else:
+            print(f"  Window {i} ({r['start_date']} ~ {r['end_date']}): ERROR - {r['error']}")
+
+
 if __name__ == "__main__":
     mode = os.environ.get("MODE", "train")
     if mode == "search":
         hyperparam_search()
+    elif mode == "rolling":
+        rolling_window_train()
     else:
         train()

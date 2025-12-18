@@ -286,6 +286,24 @@ def get_loaders(
     if len(test_df) > 0:
         test_df = test_df.sort_values(['symbol', 'start_time_ms']).reset_index(drop=True)
 
+    # Create and save full_df
+    if export_path is not None:
+        df_list = []
+        if len(train_df) > 0:
+            df_list.append(train_df)
+        if len(val_df) > 0:
+            df_list.append(val_df)
+        if len(test_df) > 0:
+            df_list.append(test_df)
+        
+        if df_list:
+            full_df = pd.concat(df_list, ignore_index=True)
+            full_df = full_df.sort_values(['symbol', 'start_time_ms']).reset_index(drop=True)
+            full_df_path = os.path.join(export_path, "full_df.h5")
+            full_df.to_hdf(full_df_path, key='df', mode='w', format='table', 
+                          complib='blosc', complevel=5, min_itemsize={'symbol': 20})
+            print(f"[LOADER] Saved full_df to: {full_df_path} ({len(full_df)} rows)")
+
     train_ds = CryptoDataset(train_df, features, target_col, seq_len, 'train')
     val_ds   = CryptoDataset(val_df,   features, target_col, seq_len, 'val')
     test_ds  = CryptoDataset(test_df,  features, target_col, seq_len, 'test')
