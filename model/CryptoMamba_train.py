@@ -27,20 +27,20 @@ CONFIG = {
     'top_n': 30,
     'num_nodes': 30,          # Number of nodes in graph
     'seq_len': 240,           # Time window size
-    'input_dim': 98,         # Will be updated automatically based on features
+    'input_dim': 166,         # Will be updated automatically based on features
     'hidden_dim': 128,        # Mamba hidden dimension
     'output_dim': 1,    
-    'num_mamba_layers': 4,    # Number of Mamba layers
+    'num_mamba_layers': 2,    # Number of Mamba layers
     'd_state': 16,            # SSM state expansion factor
     'd_conv': 4,              # Local convolution width
     'expand': 2,              # Block expansion factor
-    'dropout': 0.1,
+    'dropout': 0.2,
     'batch_size': 64,
     'epochs': 10,
-    'lr': 0.0001,
+    'lr': 0.001,
     'num_workers': 24,        # Number of workers for data loading (0 = single process)
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
-    'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_98.json'),     # Set to None to auto-detect '_neut' features
+    'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_166.json'),     # Set to None to auto-detect '_neut' features
     'ban_list_path': str(PROJECT_ROOT / 'global_ban_dates.json'),
     'save_path': str(PROJECT_ROOT / 'best_cryptomamba_model.pt'),
     'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / 'mamba'),
@@ -53,15 +53,15 @@ CONFIG = {
     
     # Hybrid Loss weights (used if loss_type='hybrid')
     'mse_weight': 0.2,      # Weight for MSE component
-    'dir_weight': 0.5,      # Weight for directional component (방향 중시!)
-    'ic_weight': 0.3,       # Weight for IC component
+    'dir_weight': 0.1,      # Weight for directional component (방향 중시!)
+    'ic_weight': 0.4,       # Weight for IC component
     
     # Adaptive Loss settings (used if loss_type='adaptive')
-    'initial_weights': (0.6, 0.2, 0.2),  # (mse, dir, ic) for early epochs
+    'initial_weights': (0.8, 0.1, 0.1),  # (mse, dir, ic) for early epochs
     'final_weights': (0.2, 0.4, 0.4),    # (mse, dir, ic) for late epochs
     
     # Temperature for smooth sign function
-    'temperature': 1.0,
+    'temperature': 0.2,
 }
 
 
