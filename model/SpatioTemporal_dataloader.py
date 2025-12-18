@@ -205,7 +205,7 @@ class SpatioTemporalDataset(Dataset):
 #   HELPER: 날짜 리스트로 split df 로딩
 # =====================================================================
 
-def _load_split_df(data_dir, dates, top_n, nan_dates_map):
+def _load_split_df(data_dir, dates, top_n, nan_dates_map, test_mode=False, sampling_freq=4):
     """
     주어진 날짜 리스트에 대해:
       - data_dir/{date}_xy_top{top_n}.h5 파일을 순회하면서 읽고
@@ -213,8 +213,11 @@ def _load_split_df(data_dir, dates, top_n, nan_dates_map):
       - 'date' 컬럼 추가해서 concat
     """
     df_list = []
+    for i, d in enumerate(dates):
+        if (not test_mode) and sampling_freq is not None and sampling_freq > 1:
+            if i % sampling_freq != 0:
+                continue
 
-    for d in dates:
         fp = os.path.join(data_dir, f"{d}_xy_top{top_n}.h5")
         if not os.path.exists(fp):
             continue
@@ -232,6 +235,7 @@ def _load_split_df(data_dir, dates, top_n, nan_dates_map):
         return pd.DataFrame()
 
     out = pd.concat(df_list, ignore_index=True)
+    print("[DEBUG] out =", out.shape)
     return out
 
 
@@ -432,7 +436,7 @@ def get_spatiotemporal_loaders(
     # =====================================================================
     # 4. train df 로딩 + feature 결정
     # =====================================================================
-    train_df = _load_split_df(data_dir, train_dates, top_n, nan_dates_map)
+    train_df = _load_split_df(data_dir, train_dates, top_n, nan_dates_map, test_mode=False, sampling_freq=3)
     if train_df.empty:
         raise RuntimeError("[ST LOADER] train_df is empty. Check date range or ban list.")
 
@@ -484,7 +488,7 @@ def get_spatiotemporal_loaders(
     )
 
     # val
-    val_df = _load_split_df(data_dir, val_dates, top_n, nan_dates_map)
+    val_df = _load_split_df(data_dir, val_dates, top_n, nan_dates_map, test_mode=False, sampling_freq=3)
     if val_df.empty:
         print("[WARN] val_df is empty.")
     val_ds = _build_dataset_for_split(
