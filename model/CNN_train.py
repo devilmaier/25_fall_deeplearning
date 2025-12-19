@@ -15,21 +15,21 @@ from CNN import TimeSeries1DCNN
 
 PROJECT_ROOT = Path(__file__).parent.parent
 
-START_DATE = '2024-10-01' 
-END_DATE   = '2025-04-14'
+START_DATE = '2024-08-01' 
+END_DATE   = '2025-03-14'
 DATASET_FOLDER_NAME = f"cnn_{START_DATE}_to_{END_DATE}"
 
 CONFIG = {
     'data_dir': str(PROJECT_ROOT / 'data' / 'xy'),
-    'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / DATASET_FOLDER_NAME),
+    'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / 'cnn' / DATASET_FOLDER_NAME),
     'start_date': START_DATE,
     'end_date':   END_DATE,
-    'train_start_date': '2024-10-01',
-    'train_end_date':   '2025-02-28',
-    'val_start_date':   '2025-03-01',
-    'val_end_date':     '2025-03-31',
-    'test_start_date':  '2025-04-01',
-    'test_end_date':    '2025-04-14',
+    'train_start_date': '2024-08-01',
+    'train_end_date':   '2025-01-31',
+    'val_start_date':   '2025-02-01',
+    'val_end_date':     '2025-02-28',
+    'test_start_date':  '2025-03-01',
+    'test_end_date':    '2025-03-14',
     'top_n': 30,
     'seq_len': 60,      
     'input_dim': 480,   
@@ -262,7 +262,7 @@ def hyperparam_search(
         samp_suffix = "full" if hparams["num_samples"] is None else f"samp{hparams['num_samples']}"
         seq_suffix = f"seq{CONFIG['seq_len']}" 
         tuning_folder = f"cnn_tuning_{CONFIG['start_date']}_{CONFIG['end_date']}_{samp_suffix}_{seq_suffix}"
-        dynamic_export_path = str(PROJECT_ROOT / 'data' / 'datasets' / tuning_folder)
+        dynamic_export_path = str(PROJECT_ROOT / 'data' / 'datasets' / 'cnn' / tuning_folder)
 
         overrides = {
             "lr": hparams["lr"],
@@ -310,34 +310,42 @@ def rolling_window_train(base_start_date='2024-10-01', num_windows=5, window_mon
     
     for window_idx in range(num_windows):
         window_start = start_date + pd.DateOffset(months=window_idx)
-        window_end = window_start + pd.DateOffset(months=window_months)
         
         window_start_str = window_start.strftime('%Y-%m-%d')
-        window_end_str = window_end.strftime('%Y-%m-%d')
         
         print(f"\n{'='*80}")
         print(f"[ROLLING] Window {window_idx + 1}/{num_windows}")
-        print(f"[ROLLING] Date range: {window_start_str} to {window_end_str}")
+        print(f"[ROLLING] Window start: {window_start_str}")
         print(f"{'='*80}\n")
         
+        # Train: 6 months, Val: 1 month, Test: 2 weeks
+        train_start = window_start
+        train_end = train_start + pd.DateOffset(months=6)
+        val_start = train_end
+        val_end = val_start + pd.DateOffset(months=1)
+        test_start = val_end
+        test_end = test_start + pd.Timedelta(days=14)
+        
+        window_end_str = test_end.strftime('%Y-%m-%d')
         dataset_folder = f"cnn_{window_start_str}_to_{window_end_str}"
         
-        train_end = window_start + pd.DateOffset(months=window_months * 0.7)
-        val_start = train_end
-        val_end = window_start + pd.DateOffset(months=window_months * 0.85)
-        test_start = val_end
+        print(f"[ROLLING] Data split:")
+        print(f"  Train: {train_start.strftime('%Y-%m-%d')} ~ {train_end.strftime('%Y-%m-%d')} (6 months)")
+        print(f"  Val:   {val_start.strftime('%Y-%m-%d')} ~ {val_end.strftime('%Y-%m-%d')} (1 month)")
+        print(f"  Test:  {test_start.strftime('%Y-%m-%d')} ~ {test_end.strftime('%Y-%m-%d')} (2 weeks)")
+        print()
         
         overrides = {
             'start_date': window_start_str,
             'end_date': window_end_str,
-            'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / dataset_folder),
+            'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / 'cnn' / dataset_folder),
             'save_path': str(PROJECT_ROOT / 'models' / f'best_model_window_{window_idx + 1}.pt'),
-            'train_start_date': window_start_str,
+            'train_start_date': train_start.strftime('%Y-%m-%d'),
             'train_end_date': train_end.strftime('%Y-%m-%d'),
             'val_start_date': val_start.strftime('%Y-%m-%d'),
             'val_end_date': val_end.strftime('%Y-%m-%d'),
             'test_start_date': test_start.strftime('%Y-%m-%d'),
-            'test_end_date': window_end_str,
+            'test_end_date': test_end.strftime('%Y-%m-%d'),
         }
         
         try:
@@ -418,6 +426,8 @@ def rolling_window_train(base_start_date='2024-10-01', num_windows=5, window_mon
 
 if __name__ == "__main__":
     mode = os.environ.get("MODE", "train")
+    train()
+    exit()
     if mode == "search":
         hyperparam_search()
     elif mode == "rolling":
