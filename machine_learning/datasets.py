@@ -72,7 +72,7 @@ def _load_feature_list(
     feature_root: str = FEATURE_ROOT_DEFAULT,
 ) -> List[str]:
     """
-    feature_list/{y_name}/top{topn}_example_features_98.json 을 읽어서
+    feature_list/{y_name}/top{topn}_example_features_166.json 을 읽어서
     feature 이름 리스트를 리턴한다.
 
     JSON 포맷:
@@ -80,7 +80,7 @@ def _load_feature_list(
       2) 현재처럼: "['x_...', 'x_...', ...]"  # 문자열 안에 파이썬 리스트가 들어간 형태도 지원
     """
     json_path = os.path.join(
-        feature_root, y_name, f"top{topn}_example_features_98.json"
+        feature_root, y_name, f"top{topn}_example_features_166.json"
     )
     if not os.path.exists(json_path):
         raise FileNotFoundError(f"Feature list JSON not found: {json_path}")
@@ -247,7 +247,7 @@ def build_xy_dataset(
             "n_rows": int(len(export_df)),
             "n_features": int(len(final_feature_cols)),
             "feature_list_path": os.path.join(
-                feature_root, y_name, f"top{topn}_example_features_98.json"
+                feature_root, y_name, f"top{topn}_example_features_166.json"
             ),
             "feature_cols": final_feature_cols,
         }
@@ -270,6 +270,7 @@ if __name__ == "__main__":
     parser.add_argument("--end_date", required=True, help="YYYY-MM-DD")
     parser.add_argument("--y_name", required=True, help="target column, e.g. y_60m")
     parser.add_argument("--topn", type=int, required=True, help="universe size (e.g. 30)")
+    parser.add_argument("--max_rows", type=int, default=None, help="cap total rows (optional)")
     parser.add_argument(
     )
     parser.add_argument(
