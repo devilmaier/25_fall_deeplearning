@@ -32,14 +32,12 @@ def _iter_dates(start_date: str, end_date: str) -> List[str]:
     if end < start:
         raise ValueError(f"end_date({end_date}) must be >= start_date({start_date})")
 
-    # 1) 기본 날짜 range 생성
     cur = start
     dates: List[str] = []
     while cur <= end:
         dates.append(cur.strftime("%Y-%m-%d"))
         cur += timedelta(days=1)
 
-    # 2) 프로젝트 루트에 있는 global_ban_dates.json 적용
     ban_path = BAN_PATH_DEFAULT
 
     if os.path.exists(ban_path):
@@ -159,10 +157,8 @@ def build_xy_dataset(
     y : pd.Series
         타겟 시리즈
     """
-    # 1) feature list 로드
     feature_list = _load_feature_list(y_name=y_name, topn=topn, feature_root=feature_root)
 
-    # 2) 날짜 루프 돌면서 data/xy/{date}_xy_top{topn}.h5 읽기
     all_rows = []
     dates = _iter_dates(start_date, end_date)
 
@@ -180,7 +176,6 @@ def build_xy_dataset(
             print(f"[WARN] Failed to read {file_path}: {e}")
             continue
 
-        # 필요한 컬럼만 선택 (존재하지 않는 feature는 drop)
         needed_cols = [y_name] + feature_list
         existing_cols = [c for c in needed_cols if c in df.columns]
 
@@ -199,13 +194,12 @@ def build_xy_dataset(
 
         sub = df[existing_cols].copy()
 
-        # inf -> NaN, 그리고 NaN drop
         sub = sub.replace([np.inf, -np.inf], np.nan).dropna()
         if sub.empty:
             print(f"[WARN] After dropna, no rows left in {file_path}")
             continue
 
-        sub["__date__"] = d  # 디버깅용 날짜 컬럼
+        sub["__date__"] = d
         all_rows.append(sub)
 
         print(f"[INFO] Loaded {len(sub):6d} rows from {file_path}")
@@ -216,26 +210,22 @@ def build_xy_dataset(
     full_df = pd.concat(all_rows, axis=0, ignore_index=True)
     print(f"[INFO] Total rows before sampling: {len(full_df)}")
 
-    # 3) 필요한 경우 row 수 샘플링
     if (max_rows is not None) and (len(full_df) > max_rows):
         full_df = full_df.sample(n=max_rows, random_state=random_state)
         full_df = full_df.sort_index()
         print(f"[INFO] Sampled down to {len(full_df)} rows with max_rows={max_rows}")
 
-    # 4) X, y 분리
     final_feature_cols = [c for c in feature_list if c in full_df.columns]
     X = full_df[final_feature_cols].copy()
     y = full_df[y_name].copy()
 
     print(f"[INFO] Final X shape: {X.shape}, y shape: {y.shape}")
 
-    # 5) export (옵션)
     if export:
         os.makedirs(export_dir, exist_ok=True)
         out_fname = f"{y_name}_top{topn}_{start_date}_{end_date}_n{len(full_df)}.h5"
         out_path = os.path.join(export_dir, out_fname)
 
-        # 하나의 DF에 y + X + meta(date) 포함해서 저장
         export_df = full_df[[y_name] + final_feature_cols + ["__date__"]].copy()
         export_df.to_hdf(out_path, key="df", mode="w")
 

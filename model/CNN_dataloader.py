@@ -10,7 +10,7 @@ from tqdm import tqdm
 from sklearn.preprocessing import StandardScaler
 
 class CryptoDataset(Dataset):
-    """Memory-optimized dataset for time series sequences."""
+    """Dataset for time series sequences."""
     def __init__(self, df, feature_cols, target_col, seq_len=60, mode='train'):
         self.seq_len = seq_len
         self.target_col = target_col
@@ -89,7 +89,7 @@ def get_loaders(
     val_start_date=None, val_end_date=None,
     test_start_date=None, test_end_date=None
 ):
-    """Memory-optimized data loader with incremental processing and outlier removal."""
+    """Data loader with incremental processing and outlier removal."""
 
     if export_path is not None:
         os.makedirs(export_path, exist_ok=True)

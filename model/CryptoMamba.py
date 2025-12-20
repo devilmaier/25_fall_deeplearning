@@ -12,7 +12,7 @@ except ImportError:
 
 
 class RMSNorm(nn.Module):
-    """RMS Normalization used in Mamba architecture"""
+    """RMS Normalization."""
     def __init__(self, d_model: int, eps: float = 1e-5):
         super().__init__()
         self.eps = eps
@@ -37,26 +37,7 @@ class CryptoMamba(nn.Module):
                  mean=None,
                  std=None):
         """
-        CryptoMamba Model for cryptocurrency prediction with cross-coin correlation learning
-        
-        Architecture:
-        1. Per-coin feature projection
-        2. Temporal Mamba layers (process time dimension)
-        3. Spatial Mamba layers (process coin dimension)
-        4. Prediction head
-        
-        Args:
-            num_nodes: Number of coins/symbols (default: 30)
-            input_dim: Input feature dimension (default: 258)
-            hidden_dim: Model hidden dimension (default: 128)
-            output_dim: Output dimension (default: 1)
-            dropout: Dropout rate (default: 0.1)
-            num_mamba_layers: Number of Mamba layers (default: 4)
-            d_state: SSM state expansion factor (default: 16)
-            d_conv: Local convolution width (default: 4)
-            expand: Block expansion factor (default: 2)
-            mean: Input normalization mean (optional)
-            std: Input normalization std (optional)
+        CryptoMamba Model for cryptocurrency prediction.
         """
         super().__init__()
         
@@ -67,29 +48,18 @@ class CryptoMamba(nn.Module):
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         
-        # -------------------------------------------------------
-        # 0. In-model Normalization
-        # -------------------------------------------------------
+        # Normalization
         if mean is not None and std is not None:
             self.register_buffer('input_mean', mean)
             self.register_buffer('input_std', std)
         else:
-            # Default: No normalization (Mean=0, Std=1)
-            # Shape: (1, 1, 1, input_dim) for broadcasting to (Batch, Time, Nodes, Features)
             self.register_buffer('input_mean', torch.zeros(1, 1, 1, input_dim))
             self.register_buffer('input_std', torch.ones(1, 1, 1, input_dim))
         
-        # -------------------------------------------------------
-        # 1. Feature Projection (per-coin)
-        # Project each coin's features independently
-        # -------------------------------------------------------
+        # Feature Projection
         self.feature_projection = nn.Linear(input_dim, hidden_dim)
         
-        # -------------------------------------------------------
-        # 2. Temporal Mamba Layers
-        # Process time dimension for each coin
-        # Learn temporal patterns: price movements over time
-        # -------------------------------------------------------
+        # Temporal Mamba Layers
         self.temporal_mamba_layers = nn.ModuleList([
             Mamba(
                 d_model=hidden_dim,
@@ -102,11 +72,7 @@ class CryptoMamba(nn.Module):
             RMSNorm(hidden_dim) for _ in range(num_mamba_layers // 2)
         ])
         
-        # -------------------------------------------------------
-        # 3. Spatial Mamba Layers
-        # Process coin dimension across time
-        # Learn cross-coin correlations: BTC affects ETH, etc.
-        # -------------------------------------------------------
+        # Spatial Mamba Layers
         self.spatial_mamba_layers = nn.ModuleList([
             Mamba(
                 d_model=hidden_dim,
@@ -119,16 +85,10 @@ class CryptoMamba(nn.Module):
             RMSNorm(hidden_dim) for _ in range(num_mamba_layers // 2)
         ])
         
-        # -------------------------------------------------------
-        # 4. Final temporal aggregation
-        # Aggregate information across time for final prediction
-        # -------------------------------------------------------
+        # Temporal aggregation
         self.temporal_pooling = nn.AdaptiveAvgPool1d(1)
         
-        # -------------------------------------------------------
-        # 5. Prediction Head
-        # Predict future returns for each coin
-        # -------------------------------------------------------
+        # Prediction Head
         self.final_norm = RMSNorm(hidden_dim)
         self.prediction_head = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -140,7 +100,6 @@ class CryptoMamba(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        """Initialize model parameters"""
         # Initialize projection
         nn.init.xavier_uniform_(self.feature_projection.weight)
         if self.feature_projection.bias is not None:
@@ -154,31 +113,16 @@ class CryptoMamba(nn.Module):
                     nn.init.zeros_(layer.bias)
 
     def forward(self, x):
-        """
-        Forward pass with cross-coin correlation learning
-        
-        Args:
-            x: Input tensor of shape (Batch, Time, Nodes, Features)
-        
-        Returns:
-            predictions: Output tensor of shape (Batch, Nodes)
-        """
         # x shape: (Batch, Time, Nodes, Features)
         B, L, N, F = x.size()
         
-        # --- Step 0: Apply Normalization ---
+        # Normalization
         x = (x - self.input_mean) / (self.input_std + 1e-9)
         
-        # --- Step 1: Feature Projection ---
-        # Process each coin's features independently
-        # (B, L, N, F) -> (B, L, N, H)
+        # Feature Projection
         x = self.feature_projection(x)
         
-        # --- Step 2: Temporal Processing ---
-        # Process time dimension for each coin
-        # Learn: "How does each coin's price change over time?"
-        
-        # Reshape to (B*N, L, H) to process each coin's time series
+        # Temporal Processing
         x = x.permute(0, 2, 1, 3).contiguous()  # (B, N, L, H)
         x = x.view(B * N, L, self.hidden_dim)   # (B*N, L, H)
         
@@ -187,15 +131,9 @@ class CryptoMamba(nn.Module):
             x_norm = norm(x)
             x = x + mamba_layer(x_norm)  # Residual connection
         
-        # Reshape back to (B, N, L, H)
         x = x.view(B, N, L, self.hidden_dim)
         
-        # --- Step 3: Spatial Processing ---
-        # Process coin dimension across time
-        # Learn: "How do different coins correlate with each other?"
-        
-        # For each time step, process relationships between coins
-        # Reshape to (B*L, N, H) to process coin relationships at each time
+        # Spatial Processing
         x = x.permute(0, 2, 1, 3).contiguous()  # (B, L, N, H)
         x = x.view(B * L, N, self.hidden_dim)   # (B*L, N, H)
         
@@ -204,32 +142,22 @@ class CryptoMamba(nn.Module):
             x_norm = norm(x)
             x = x + mamba_layer(x_norm)  # Residual connection
         
-        # Reshape back to (B, L, N, H)
         x = x.view(B, L, N, self.hidden_dim)
         
-        # --- Step 4: Temporal Aggregation ---
-        # Aggregate temporal information for final prediction
-        # (B, L, N, H) -> (B, N, H)
-        
-        # Permute to (B, N, H, L) for pooling
+        # Temporal Aggregation
         x = x.permute(0, 2, 3, 1).contiguous()  # (B, N, H, L)
         x = x.view(B * N, self.hidden_dim, L)   # (B*N, H, L)
         
-        # Global average pooling over time
         x = self.temporal_pooling(x).squeeze(-1)  # (B*N, H)
         
-        # Reshape to (B, N, H)
         x = x.view(B, N, self.hidden_dim)
         
-        # --- Step 5: Prediction ---
-        # Apply final normalization and prediction head
+        # Prediction
         x = self.final_norm(x)  # (B, N, H)
         
-        # Flatten for prediction head
         x = x.view(B * N, self.hidden_dim)  # (B*N, H)
         predictions = self.prediction_head(x)  # (B*N, 1)
         
-        # Reshape to (B, N)
         predictions = predictions.view(B, N)
         
         return predictions

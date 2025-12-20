@@ -12,8 +12,7 @@ from multiprocessing import Pool, cpu_count
 
 def process_timestamp_group_fast(args):
     """
-    Optimized version using pre-grouped data for parallel processing.
-    Much faster than filtering DataFrame each time.
+    Process timestamp group using pre-grouped data.
     """
     ts, ts_group, feature_cols, target_col, num_nodes = args
 
@@ -44,16 +43,7 @@ def process_timestamp_group_fast(args):
 
 
 class SpatioTemporalDataset(Dataset):
-    """
-    PyTorch Dataset for SpatioTemporalTransformer model with PARALLEL initialization.
-    Creates graph-structured data where each sample contains multiple symbols (nodes)
-    at the same time window.
-
-    Uses multiprocessing to speed up dataset construction by processing
-    multiple timestamps simultaneously across multiple CPU cores.
-
-    Output shape: (Batch, Time, Nodes, Features)
-    """
+    """PyTorch Dataset for SpatioTemporalTransformer model."""
     def __init__(
         self,
         df,
@@ -66,12 +56,6 @@ class SpatioTemporalDataset(Dataset):
         num_data=None,   # 최대 시퀀스 개수 (None이면 전부 사용)
         seed=42          # 샘플링 시드
     ):
-        """
-        Args:
-            num_workers: Number of parallel workers. If None, uses cpu_count().
-                         Set to 1 to disable parallel processing.
-            num_data: If not None, randomly sample at most num_data sequences.
-        """
         self.seq_len = seq_len
         self.num_nodes = num_nodes
         self.target_col = target_col
@@ -96,22 +80,22 @@ class SpatioTemporalDataset(Dataset):
             num_workers = cpu_count()
         num_workers = max(1, min(num_workers, cpu_count()))
 
-        print(f"[INFO] Building {mode} dataset (PARALLEL Mode with {num_workers} workers)...")
+        print(f"[INFO] Building {mode} dataset with {num_workers} workers...")
 
         # =====================================================================
-        # PARALLEL PROCESSING
+        # Process timestamps
         # =====================================================================
         if num_workers > 1:
-            # Pre-group data for faster processing
+            # Pre-group data
             grouped = df.groupby('start_time_ms')
 
-            # Prepare arguments for parallel processing
+            # Prepare arguments
             args_list = [
                 (ts, grouped.get_group(ts), feature_cols, target_col, num_nodes)
                 for ts in self.timestamps
             ]
 
-            # Process in parallel
+            # Process timestamps
             with Pool(processes=num_workers) as pool:
                 results = list(tqdm(
                     pool.imap(process_timestamp_group_fast, args_list),
@@ -130,7 +114,7 @@ class SpatioTemporalDataset(Dataset):
                         'targets': result['targets']
                     }
         else:
-            # Sequential processing (fallback)
+            # Sequential processing
             print(f"[INFO] Using sequential processing (num_workers=1)")
             self.time_groups = {}
             grouped = df.groupby('start_time_ms')
@@ -146,16 +130,14 @@ class SpatioTemporalDataset(Dataset):
                         'targets': result['targets']
                     }
 
-        # =====================================================================
-        # Create valid sample indices (sequences of timestamps)
-        # =====================================================================
+        # Create valid sample indices
         self.sample_indices = []
         valid_timestamps = sorted(self.time_groups.keys())
 
         for i in range(len(valid_timestamps) - seq_len + 1):
             time_window = valid_timestamps[i:i + seq_len]
 
-            # Check if all symbols are present in all timestamps
+            # Check if all symbols are present
             symbol_sets = [set(self.time_groups[ts]['symbols']) for ts in time_window]
             common_symbols = set.intersection(*symbol_sets)
 
@@ -166,9 +148,7 @@ class SpatioTemporalDataset(Dataset):
         total_sequences = len(self.sample_indices)
         print(f"[{mode.upper()}] Created {total_sequences} valid graph sequences")
 
-        # =====================================================================
-        # RANDOM SAMPLING OF SEQUENCES (optional)
-        # =====================================================================
+        # Random sampling
         if num_data is not None and total_sequences > num_data:
             rng = np.random.default_rng(seed)
             sampled_idx = rng.choice(total_sequences, size=num_data, replace=False)
@@ -201,17 +181,9 @@ class SpatioTemporalDataset(Dataset):
         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 
 
-# =====================================================================
-#   HELPER: 날짜 리스트로 split df 로딩
-# =====================================================================
+# Helper functions
 
 def _load_split_df(data_dir, dates, top_n, nan_dates_map, test_mode=False, sampling_freq=4):
-    """
-    주어진 날짜 리스트에 대해:
-      - data_dir/{date}_xy_top{top_n}.h5 파일을 순회하면서 읽고
-      - nan_dates_map에 있으면 해당 feature 0으로 채우고
-      - 'date' 컬럼 추가해서 concat
-    """
     df_list = []
     for i, d in enumerate(dates):
         if (not test_mode) and sampling_freq is not None and sampling_freq > 1:
@@ -257,12 +229,6 @@ def _build_dataset_for_split(
     end_date=None,
     feature_num=None,
 ):
-    """
-    - df 하나 받아서
-      - (옵션) HDF로 저장하고
-      - SpatioTemporalDataset 생성
-      - df 메모리에서 삭제
-    """
     print(f"[ST LOADER] {split_name} df size: {len(df)}")
 
     if export_path is not None:
@@ -298,9 +264,7 @@ def _build_dataset_for_split(
     return ds
 
 
-# =====================================================================
-#   MAIN LOADER (DATE-BASED SPLIT ONLY, NO FALLBACK)
-# =====================================================================
+# Main loader
 
 def get_spatiotemporal_loaders(
     data_dir,
@@ -315,7 +279,7 @@ def get_spatiotemporal_loaders(
     num_workers=4,
     ban_list_path=None,
     export_path=None,
-    dataset_workers=None,  # Number of workers for parallel dataset construction
+    dataset_workers=None,
     train_num=None,        # max # of train sequences
     val_num=None,          # max # of val sequences
     test_num=None,         # max # of test sequences
@@ -323,30 +287,11 @@ def get_spatiotemporal_loaders(
     test_date=None,        # YYYY-MM-DD, test 시작 날짜
     seed=42                # base seed for sampling
 ):
-    """
-    DATE-BASED SPLIT 전용 버전.
-
-    반드시 vali_date, test_date 둘 다 지정해야 한다.
-
-    Split:
-        train: date < vali_date
-        val:   vali_date <= date < test_date
-        test:  date >= test_date
-
-    각 split은:
-        - 해당 날짜 구간에 해당하는 .h5만 로드
-        - concat 해서 하나의 df로 만든 뒤
-        - (옵션) HDF로 저장
-        - SpatioTemporalDataset 생성
-        - df 삭제 (메모리 회수)
-    """
 
     if vali_date is None or test_date is None:
         raise ValueError("This loader requires vali_date and test_date to be specified for date-based split.")
 
-    # =====================================================================
-    # 0. CACHE: 이미 export된 데이터가 있으면 바로 load
-    # =====================================================================
+    # CACHE
     if isinstance(feature_list, str) and feature_list.endswith('.json'):
         with open(feature_list, 'r') as f:
             ft = json.load(f)
@@ -412,9 +357,7 @@ def get_spatiotemporal_loaders(
         else:
             print("[CACHE] No valid cache found. Building dataset...")
 
-    # =====================================================================
-    # 1. Load Ban List
-    # =====================================================================
+    # Load Ban List
     missing_dates = []
     nan_dates_map = {}
 
@@ -425,13 +368,8 @@ def get_spatiotemporal_loaders(
             missing_dates = ban.get("missing_dates", [])
             nan_dates_map = ban.get("nan_dates", {})
 
-    # =====================================================================
-    # 2. Feature list (raw from parameter)
-    # ====================================================================
-
-    # =====================================================================
-    # 3. DATE SPLIT: train / val / test 날짜 나누기
-    # =====================================================================
+    # Feature list
+    # DATE SPLIT
     all_dates = pd.date_range(start_date, end_date).strftime("%Y-%m-%d").tolist()
     valid_dates = [d for d in all_dates if d not in missing_dates]
 
@@ -443,9 +381,7 @@ def get_spatiotemporal_loaders(
     print(f"[ST LOADER] Valid dates: {len(valid_dates)} "
           f"(train={len(train_dates)}, val={len(val_dates)}, test={len(test_dates)})")
 
-    # =====================================================================
-    # 4. train df 로딩 + feature 결정
-    # =====================================================================
+    # train df 로딩 + feature 결정
     train_df = _load_split_df(data_dir, train_dates, top_n, nan_dates_map, test_mode=False, sampling_freq=3)
     if train_df.empty:
         raise RuntimeError("[ST LOADER] train_df is empty. Check date range or ban list.")
@@ -475,9 +411,7 @@ def get_spatiotemporal_loaders(
             json.dump(meta, f, indent=2)
         print(f"[EXPORT] Saved meta to: {os.path.join(export_path, f'meta_{target_col}_top{top_n}_{start_date}_{vali_date}_{test_date}_{end_date}_{feature_num}.json')}")
 
-    # =====================================================================
-    # 5. split별로 df 로딩 & Dataset 생성 (각각 따로, full_df 없음)
-    # =====================================================================
+    # split별로 df 로딩 & Dataset 생성
     train_ds = _build_dataset_for_split(
         "train",
         train_df,
@@ -543,9 +477,7 @@ def get_spatiotemporal_loaders(
         feature_num=feature_num,
     )
 
-    # =====================================================================
-    # 6. DataLoader 반환
-    # =====================================================================
+    # DataLoader 반환
     return (
         DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=num_workers),
         DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=num_workers),

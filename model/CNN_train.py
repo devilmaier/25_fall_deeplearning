@@ -35,7 +35,7 @@ CONFIG = {
     'input_dim': 480,   
     'output_dim': 1,    
     'batch_size': 512,
-    'epochs': 10,
+    'epochs': 1,
     'lr': 0.0003,
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_166.json'),
@@ -426,8 +426,6 @@ def rolling_window_train(base_start_date='2024-10-01', num_windows=5, window_mon
 
 if __name__ == "__main__":
     mode = os.environ.get("MODE", "train")
-    train()
-    exit()
     if mode == "search":
         hyperparam_search()
     elif mode == "rolling":

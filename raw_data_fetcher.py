@@ -44,17 +44,11 @@ def parse_args():
 
     args = parser.parse_args()
 
-    # ---------------------------------------------------------
-    # 날짜 기본값 처리 (기존 로직 스타일 유지)
-    # ---------------------------------------------------------
     utc_now = datetime.now(timezone.utc)
     default_day = (utc_now - timedelta(days=1)).strftime("%Y-%m-%d")
     if args.start_date is None and args.end_date is None:
-        
         args.start_date = default_day
         args.end_date = default_day
-
-    # 둘 중 하나만 넣으면 오류
     elif args.end_date is None:
         args.end_date = default_day
     elif args.start_date is None:
@@ -159,7 +153,6 @@ def load_csv_from_zip_bytes(zip_bytes: bytes) -> pd.DataFrame:
         print(f"[WARN] load_csv_from_zip_bytes unzip failed: {e}")
         return pd.DataFrame()
 
-    # 1) header 있는 버전 시도
     try:
         df_try_header = pd.read_csv(
             io.StringIO(raw_bytes.decode("utf-8")),
@@ -173,7 +166,6 @@ def load_csv_from_zip_bytes(zip_bytes: bytes) -> pd.DataFrame:
     except Exception:
         pass
 
-    # 2) header 없는 버전
     try:
         df_no_header = pd.read_csv(
             io.StringIO(raw_bytes.decode("utf-8")),
@@ -492,7 +484,6 @@ def build_metrics_1m_for_merge(df_main_1m: pd.DataFrame,
 # 9. each symbol fetching
 # ---------------------------------------------------------
 def fetch_symbol_for_date(symbol: str, date_str: str) -> pd.DataFrame:
-    # 1) main klines
     zip_main = download_zip_if_exists(symbol, date_str, market_type="klines")
     if zip_main is None:
         return pd.DataFrame()
@@ -505,7 +496,6 @@ def fetch_symbol_for_date(symbol: str, date_str: str) -> pd.DataFrame:
     if df_main.empty:
         return pd.DataFrame()
 
-    # 2) premium index
     zip_prem = download_zip_if_exists(symbol, date_str, market_type="premiumIndexKlines")
     if zip_prem is not None:
         raw_prem = load_csv_from_zip_bytes(zip_prem)
@@ -530,7 +520,6 @@ def fetch_symbol_for_date(symbol: str, date_str: str) -> pd.DataFrame:
         df_tmp["pm_low"] = pd.NA
         df_tmp["pm_close"] = pd.NA
 
-    # 3) metrics (5m → 1m backward fill)
     zip_metrics_today = download_zip_if_exists(symbol, date_str, market_type="metrics")
     raw_metrics_today = (
         load_csv_from_zip_bytes(zip_metrics_today)

@@ -25,14 +25,6 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
     H2C = (C_last / H_max  - 1) * 10000
     L2C = (C_last / L_min  - 1) * 10000
   """
-  """
-  추가 지표 : 
-  1. RVol (Realized Volatility): 로그 수익률의 표준편차 (리스크 측정)
-  2. EffRatio (Efficiency Ratio): 추세의 순도/직선성 (노이즈 필터링)
-  3. OI_P_Corr (OI-Price Correlation): 가격과 미결제약정의 상관관계 (추세 진성 여부)
-  4. Force (Force Index): 거래량을 가중한 가격 모멘텀 (매수/매도 세력의 힘)
-  5. PctB (Bollinger %B): 볼린저 밴드 내 상대적 위치 (Stationarity 확보)
-  """
 
   g = g.sort_values("start_time_ms")
   roll = g[["open", "high", "low", "close"]].rolling(window=window, min_periods=window)
@@ -42,44 +34,37 @@ def _compute_ohlc_window_features(g: pd.DataFrame, window: int) -> pd.DataFrame:
   h_max = roll["high"].max()
   l_min = roll["low"].min()
 
-  # bp(=basis point) 단위 변환 = ×10000
   o2c = (c_last / o_first - 1.0) * 10000
   o2h = (h_max / o_first - 1.0) * 10000
   o2l = (l_min / o_first - 1.0) * 10000
   h2c = (c_last / h_max - 1.0) * 10000
   l2c = (c_last / l_min - 1.0) * 10000
 
-  # (1) RVol (Realized Volatility)
   log_ret = np.log(g["close"] / g["close"].shift(1)).fillna(0)
   rvol = log_ret.rolling(window=window, min_periods=window).std() * 10000
 
-  # (2) EffRatio (Efficiency Ratio)
   direction = (g["close"] - g["close"].shift(window)).abs()
   volatility = g["close"].diff().abs().rolling(window=window, min_periods=window).sum()
-  eff_ratio = direction / volatility.replace(0, 1.0) # 0으로 나누기 방지
+  eff_ratio = direction / volatility.replace(0, 1.0)
 
-  # (3) OI_P_Corr (OI-Price Correlation)
   if "mt_oi" in g.columns:
       oi_p_corr = g["close"].rolling(window=window, min_periods=window).corr(g["mt_oi"]).fillna(0)
   else:
       oi_p_corr = pd.Series(0.0, index=g.index)
 
-  # (4) Force (Force Index)
   price_diff = g["close"].diff().fillna(0)
-  volume = g["quote_volume"] # 거래량
+  volume = g["quote_volume"]
   
   raw_force = (price_diff * volume).rolling(window=window, min_periods=window).mean()
   vol_mean = volume.rolling(window=window, min_periods=window).mean().replace(0, 1.0)
 
   force_idx = raw_force / vol_mean
 
-  # (5) PctB (Bollinger %B)
-  mavg = roll["close"].mean() # 종가 기준 이동평균
-  mstd = roll["close"].std() # 종가 기준 이동표준편차
+  mavg = roll["close"].mean()
+  mstd = roll["close"].std()
   upper = mavg + 2 * mstd
   lower = mavg - 2 * mstd
   
-  # 밴드 폭이 0일 경우(가격 변동 없음) 0.5(중간)로 처리
   denom = (upper - lower).replace(0, 1.0) 
   pct_b = (g["close"] - lower) / denom
   pct_b = pct_b.where((upper - lower) != 0, 0.5)
@@ -130,17 +115,11 @@ def x_generator(
   if not paths:
     raise FileNotFoundError(f"no h5 files for {prev_date_str} or {date_str}")
 
-  # 하루 전 + 당일 데이터 concat
   df_list = [pd.read_hdf(p) for p in paths]
   df = pd.concat(df_list, ignore_index=True)
-  print(df.head())
-  # universe 필터 (타깃 날짜 기준 topN)
   df = df[df["symbol"].isin(universe)].copy()
-  print(df.head())
   df = preprocess_data(df, num_dates=2)
-  print(df.head())
   df.sort_values(["symbol", "start_time_ms"], inplace=True)
-  
   
   feat_list = []
   by_sym = df.groupby("symbol", group_keys=False)
@@ -160,14 +139,12 @@ def x_generator(
       and not c.endswith("_neut")
     ]
 
-    # 시각별 cross-sectional neutralization
     for col in factor_cols:
       group_mean = full.groupby("start_time_ms")[col].transform("mean")
       group_std = full.groupby("start_time_ms")[col].transform(lambda x: x.std(ddof=0))
       group_std = group_std.replace(0, 1.0)
       full[f"{col}_neut"] = (full[col] - group_mean) / group_std
 
-  # >>> 여기서부터가 핵심: 타깃 날짜만 남기기 (start_time_ms 기준) <<<
   dt = pd.to_datetime(full["start_time_ms"], unit="ms", utc=True)
   full = full[dt.dt.date == target_date].copy()
 

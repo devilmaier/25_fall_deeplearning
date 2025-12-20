@@ -39,13 +39,11 @@ def ban_symbols_with_nan(date_str: str, threshold: int = 30):
   
   banned_symbols = []
 
-  # 1) NaN row 개수 기준 ban
   for sym, g in df.groupby("symbol"):
     nan_rows = g.isna().any(axis=1).sum()
     if nan_rows >= threshold:
       banned_symbols.append(sym)
 
-  # 2) 이름이 "USD" 로 시작하는 심볼 전부 ban
   for sym in df["symbol"].unique():
     if sym.startswith("USD") and sym not in banned_symbols:
       banned_symbols.append(sym)
@@ -80,9 +78,7 @@ def check_all_columns_valid(df: pd.DataFrame) -> bool:
 
   bad_symbols = []
 
-  # symbol 단위로 그룹핑해서 NaN 존재 여부 체크
   for sym, g in df.groupby("symbol"):
-    # g.isna().any().any() → 전체 DataFrame에 NaN 있으면 True
     if g.isna().any().any():
       bad_symbols.append(sym)
   print(f"bad_symbols: {bad_symbols}")

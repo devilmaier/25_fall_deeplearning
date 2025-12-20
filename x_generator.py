@@ -377,19 +377,15 @@ def x_generator(
         raise KeyError(f"No '/data' key in {p}, keys={store.keys()}")
     raw = pd.read_hdf(p, key="data")
 
-    # universe 먼저 필터
     raw = raw[raw["symbol"].isin(universe)].copy()
 
-    # preprocess_data는 method를 명시해야 함
     merged = preprocess_data(raw)
     df_list.append(merged)
 
   df = pd.concat(df_list, ignore_index=True)
 
-  # universe 필터 한 번 더 (혹시 모를 잔여 심볼 제거)
   df = df[df["symbol"].isin(universe)].copy()
 
-  # 심볼별로 window feature 계산
   feat_list = []
   for window in WINDOW_LIST:
     feat = (
@@ -419,7 +415,6 @@ def x_generator(
     neut_df = pd.DataFrame(neut_dict, index=full.index)
     full = pd.concat([full, neut_df], axis=1)
 
-  # 타깃 날짜만 남기기 (start_time_ms 기준)
   dt = pd.to_datetime(full["start_time_ms"], unit="ms", utc=True)
   full = full[dt.dt.date == target_date].copy()
 

@@ -11,10 +11,7 @@ from functools import partial
 
 def process_timestamp_group(ts, df, feature_cols, target_col, num_nodes):
     """
-    Process a single timestamp group (designed for parallel execution).
-    
-    This function is defined at module level (not inside class) so it can be pickled
-    for multiprocessing.
+    Process a single timestamp group.
     """
     try:
         ts_data = df[df['start_time_ms'] == ts]
@@ -45,8 +42,7 @@ def process_timestamp_group(ts, df, feature_cols, target_col, num_nodes):
 
 def process_timestamp_group_fast(args):
     """
-    Optimized version using pre-grouped data.
-    Much faster than filtering DataFrame each time.
+    Process timestamp group using pre-grouped data.
     """
     ts, ts_group, feature_cols, target_col, num_nodes = args
     
@@ -77,21 +73,9 @@ def process_timestamp_group_fast(args):
 
 
 class CryptoMambaDataset(Dataset):
-    """
-    PyTorch Dataset for CryptoMamba model with PARALLEL initialization.
-    
-    Uses multiprocessing to speed up dataset construction by processing
-    multiple timestamps simultaneously across multiple CPU cores.
-    
-    Output shape: (Batch, Time, Nodes, Features)
-    """
+    """PyTorch Dataset for CryptoMamba model."""
     def __init__(self, df, feature_cols, target_col, seq_len=240, num_nodes=30, 
                  mode='train', num_workers=None):
-        """
-        Args:
-            num_workers: Number of parallel workers. If None, uses cpu_count().
-                        Set to 1 to disable parallel processing.
-        """
         self.seq_len = seq_len
         self.num_nodes = num_nodes
         self.target_col = target_col
@@ -122,7 +106,7 @@ class CryptoMambaDataset(Dataset):
         # PARALLEL PROCESSING
         # =====================================================================
         if num_workers > 1:
-            # Method 1: Pre-group data for faster processing
+            # Pre-group data
             grouped = df.groupby('start_time_ms')
             
             # Prepare arguments for parallel processing
@@ -150,7 +134,7 @@ class CryptoMambaDataset(Dataset):
                         'targets': result['targets']
                     }
         else:
-            # Sequential processing (fallback)
+            # Sequential processing
             print(f"[INFO] Using sequential processing (num_workers=1)")
             self.time_groups = {}
             grouped = df.groupby('start_time_ms')
@@ -166,16 +150,14 @@ class CryptoMambaDataset(Dataset):
                         'targets': result['targets']
                     }
         
-        # =====================================================================
-        # Create valid sample indices (sequences of timestamps)
-        # =====================================================================
+        # Create valid sample indices
         self.sample_indices = []
         valid_timestamps = sorted(self.time_groups.keys())
         
         for i in range(len(valid_timestamps) - seq_len + 1):
             time_window = valid_timestamps[i:i + seq_len]
             
-            # Check if all symbols are present in all timestamps
+            # Check if all symbols are present
             symbol_sets = [set(self.time_groups[ts]['symbols']) for ts in time_window]
             common_symbols = set.intersection(*symbol_sets)
             
@@ -199,9 +181,9 @@ class CryptoMambaDataset(Dataset):
         for t_idx, ts in enumerate(time_window):
             group = self.time_groups[ts]
             
-            # Handle both array and dict formats
+            # Handle array and dict formats
             if isinstance(group['features'], np.ndarray):
-                # Array format (from optimized version)
+                # Array format
                 symbol_to_idx = {sym: idx for idx, sym in enumerate(group['symbols'])}
                 for n_idx, sym in enumerate(symbols):
                     if sym in symbol_to_idx:
@@ -210,7 +192,7 @@ class CryptoMambaDataset(Dataset):
                         if t_idx == self.seq_len - 1:
                             y[n_idx] = group['targets'][source_idx]
             else:
-                # Dict format (from original version)
+                # Dict format
                 for n_idx, sym in enumerate(symbols):
                     if sym in group['features']:
                         x[t_idx, n_idx, :] = group['features'][sym]
@@ -233,21 +215,10 @@ def get_mamba_loaders(
     num_workers=24,
     ban_list_path=None,
     export_path=None,
-    dataset_workers=24  # NEW: Number of workers for dataset construction
+    dataset_workers=24
 ):
-    """
-    Function to load data for CryptoMamba model with parallel dataset construction.
-    
-    Args:
-        dataset_workers: Number of parallel workers for building dataset.
-                        If None, uses all available CPU cores.
-                        Set to 1 to disable parallel processing.
-        num_workers: Number of workers for DataLoader (different from dataset_workers!)
-    """
 
-    # =====================================================================
-    # 0. CACHE
-    # =====================================================================
+    # CACHE
     if export_path is not None:
         train_fp = os.path.join(export_path, "train_df.h5")
         val_fp   = os.path.join(export_path, "val_df.h5")
@@ -292,9 +263,7 @@ def get_mamba_loaders(
         else:
             print("[CACHE] No valid cache found. Building dataset...")
 
-    # =====================================================================
-    # 1-6. Data loading [Same as before]
-    # =====================================================================
+    # Data loading
     missing_dates = []
     nan_dates_map = {}
     

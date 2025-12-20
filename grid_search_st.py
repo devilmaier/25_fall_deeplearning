@@ -9,32 +9,22 @@ from pathlib import Path
 from tqdm import tqdm
 import pandas as pd
 
-# Import custom modules
-# Assuming this script is in the project root or model directory
-# Adjust imports based on file location
 import sys
 sys.path.append(str(Path(__file__).parent / 'model'))
 
 from model.SpatioTemporal_dataloader import get_spatiotemporal_loaders
 from model.SpatioTemporalTransformer import SpatioTemporalTransformer
 
-# Get project root directory
 PROJECT_ROOT = Path(__file__).parent
 
-# ==========================================
-# Hyperparameter Grid
-# ==========================================
 PARAM_GRID = {
     'seq_len': [30, 60],
     'hidden_dim': [64, 128],
     'num_transformer_layers': [2,4],
     'num_heads': [2,4,8],
     'lr': [0.001, 0.005, 0.01],
-    # input_dim is determined by the dataset features, so we don't tune it directly here
-    # unless we change the feature set.
 }
 
-# Fixed Configuration
 BASE_CONFIG = {
     'mode': 'regression',
     'data_dir': str(PROJECT_ROOT / 'data' / 'xy'),
@@ -44,17 +34,17 @@ BASE_CONFIG = {
     'test_date': '2024-11-15',
     'top_n': 30,
     'num_nodes': 30,
-    'output_dim': 1, # Regression
+    'output_dim': 1,
     'dropout': 0.2,
     'batch_size': 96,
-    'epochs': 3, # Reduced epochs for grid search
+    'epochs': 3,
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_166.json'),
     'ban_list_path': str(PROJECT_ROOT / 'global_ban_dates.json'),
     'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / 'spatiotfm'),
     'cnn_loss_weight': 0.2,
     'transformer_loss_weight': 0.3,
-    'train_num': 1000000, # Reduced for faster grid search
+    'train_num': 1000000,
     'val_num': 200000,
     'test_num': 100000,
 }
@@ -77,7 +67,6 @@ def compute_stats(loader):
 def train_evaluate(config, run_id):
     print(f"\n[Run {run_id}] Starting training with: {config}")
     
-    # 1. Load Data
     train_loader, val_loader, test_loader, feature_dim = get_spatiotemporal_loaders(
         data_dir=BASE_CONFIG['data_dir'],
         start_date=BASE_CONFIG['start_date'],
@@ -102,7 +91,6 @@ def train_evaluate(config, run_id):
     input_mean = input_mean.to(BASE_CONFIG['device'])
     input_std = input_std.to(BASE_CONFIG['device'])
 
-    # 2. Initialize Model
     model = SpatioTemporalTransformer(
         num_nodes=BASE_CONFIG['num_nodes'],
         input_dim=input_dim,
@@ -120,7 +108,6 @@ def train_evaluate(config, run_id):
     
     best_ic = -1.0
     
-    # 3. Train Loop
     for epoch in range(BASE_CONFIG['epochs']):
         model.train()
         for x, y in tqdm(train_loader, desc=f"Run {run_id} Epoch {epoch+1}", leave=False):
@@ -140,7 +127,6 @@ def train_evaluate(config, run_id):
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             optimizer.step()
 
-        # Validation
         model.eval()
         preds_list = []
         targets_list = []
@@ -154,7 +140,6 @@ def train_evaluate(config, run_id):
                 preds_list.append(final_pred.cpu().numpy())
                 targets_list.append(y.cpu().numpy())
         
-        # Calculate IC
         preds_arr = np.concatenate(preds_list).flatten()
         targets_arr = np.concatenate(targets_list).flatten()
         

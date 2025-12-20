@@ -46,36 +46,23 @@ CONFIG = {
 }
 
 def compute_stats(loader):
-    """
-    Scans the training set to compute Mean and Std for each feature.
-    For GNN: input shape is (Batch, Time, Nodes, Features)
-    Returns tensors of shape (1, 1, 1, Feature_Dim).
-    """
     print("[INFO] Computing input statistics (Mean, Std) for SpatioTemporalTransformer...")
     sum_x = 0
     sum_sq_x = 0
     count = 0
 
-    # Iterate over the entire training set
     for x, _ in tqdm(loader, desc="Scanning Data"):
-        # x shape: (Batch, Time, Nodes, Features)
-        
         # Flatten all dimensions except Features
-        # Shape: (Batch * Time * Nodes, Features)
         x_flat = x.view(-1, x.size(-1))
         
         sum_x += x_flat.sum(dim=0)
         sum_sq_x += (x_flat ** 2).sum(dim=0)
         count += x_flat.size(0)
 
-    # Calculate Mean
     mean = sum_x / count
-    
-    # Calculate Std: sqrt(E[X^2] - (E[X])^2)
     var = (sum_sq_x / count) - (mean ** 2)
     std = torch.sqrt(torch.clamp(var, min=1e-9))
     
-    # Reshape to (1, 1, 1, Features) for broadcasting
     return mean.view(1, 1, 1, -1), std.view(1, 1, 1, -1)
 
 
@@ -105,19 +92,18 @@ def train():
         batch_size=CONFIG['batch_size'],
         ban_list_path=CONFIG['ban_list_path'],
         export_path=CONFIG['export_path'],
-        dataset_workers=24  # NEW: Parallel dataset construction for speedup
+        dataset_workers=24
     )
     CONFIG['input_dim'] = feature_dim
     print(f"[INFO] Input feature dim: {feature_dim}")
 
-    # 2. Compute Statistics for Normalization
+    # Compute Statistics for Normalization
     input_mean, input_std = compute_stats(train_loader)
     
-    # Move stats to GPU
     input_mean = input_mean.to(CONFIG['device'])
     input_std = input_std.to(CONFIG['device'])
 
-    # 3. Initialize Model with Stats
+    # Initialize Model
     model = SpatioTemporalTransformer(
         num_nodes=CONFIG['num_nodes'],
         input_dim=CONFIG['input_dim'], 
@@ -132,7 +118,7 @@ def train():
     
     print(f"[INFO] Model initialized with {sum(p.numel() for p in model.parameters())} parameters")
     
-    # Select loss function based on mode
+    # Select loss function
     if CONFIG['mode'] == 'classification':
         criterion = nn.CrossEntropyLoss()
         print(f"[INFO] Using CrossEntropyLoss for classification")
@@ -146,10 +132,10 @@ def train():
     best_val_loss = float('inf')
     model_saved = False
 
-    # 4. Training Loop
+    # Training Loop
     print("[INFO] Start Training...")
     for epoch in range(CONFIG['epochs']):
-        # --- Train Step ---
+        # Train Step
         model.train()
         train_loss = 0.0
         train_final_loss = 0.0
@@ -163,14 +149,14 @@ def train():
             
             optimizer.zero_grad()
             
-            # Forward pass - model returns (final_pred, transformer_pred, cnn_pred)
+            # Forward pass
             final_pred, transformer_pred, cnn_pred = model(x)
             
             if CONFIG['mode'] == 'classification':
-                # Convert y to binary labels: positive -> 1, negative/zero -> 0
-                y_labels = (y > 0).long()  # Shape: (Batch, Nodes)
+                # Convert y to binary labels
+                y_labels = (y > 0).long()
                 
-                # Reshape for loss calculation: (Batch*Nodes, 2) and (Batch*Nodes)
+                # Reshape for loss calculation
                 batch_size, num_nodes, num_classes = final_pred.shape
                 final_pred_flat = final_pred.view(-1, num_classes)
                 transformer_pred_flat = transformer_pred.view(-1, num_classes)
@@ -183,11 +169,11 @@ def train():
                 cnn_loss = criterion(cnn_pred_flat, y_labels_flat)
                 
                 # Calculate accuracy
-                pred_labels = torch.argmax(final_pred, dim=2)  # Shape: (Batch, Nodes)
+                pred_labels = torch.argmax(final_pred, dim=2)
                 train_correct += (pred_labels == y_labels).sum().item()
                 train_total += y_labels.numel()
             else:  # regression
-                # Squeeze output for regression: (Batch, Nodes, 1) -> (Batch, Nodes)
+                # Squeeze output for regression
                 final_pred = final_pred.squeeze(-1)
                 transformer_pred = transformer_pred.squeeze(-1)
                 cnn_pred = cnn_pred.squeeze(-1)
@@ -197,14 +183,14 @@ def train():
                 transformer_loss = criterion(transformer_pred, y)
                 cnn_loss = criterion(cnn_pred, y)
             
-            # Combined loss: final prediction + auxiliary losses
+            # Combined loss
             loss = final_loss + \
                    CONFIG['transformer_loss_weight'] * transformer_loss + \
                    CONFIG['cnn_loss_weight'] * cnn_loss
             
             loss.backward()
             
-            # Gradient clipping to prevent exploding gradients
+            # Gradient clipping
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             
             optimizer.step()
@@ -220,7 +206,7 @@ def train():
         avg_train_cnn_loss = train_cnn_loss / len(train_loader)
         train_accuracy = 100.0 * train_correct / train_total if train_total > 0 else 0.0
 
-        # --- Validation Step ---
+        # Validation Step
         model.eval()
         val_loss = 0.0
         val_final_loss = 0.0
@@ -279,7 +265,6 @@ def train():
         avg_val_cnn_loss = val_cnn_loss / len(val_loader)
         val_accuracy = 100.0 * val_correct / val_total if val_total > 0 else 0.0
         
-        # Step scheduler
         scheduler.step(avg_val_loss)
         
         print(f"Epoch [{epoch+1}/{CONFIG['epochs']}]")
@@ -312,7 +297,7 @@ def train():
             else:
                 print(f"  -> Model saved (Val loss improved: {avg_val_loss:.6f})")
 
-    # 5. Final Evaluation (Test Set)
+    # Final Evaluation
     print("\n[INFO] Evaluating on Test Set...")
     
     # Load best model if it was saved
@@ -407,10 +392,10 @@ def train():
             final_preds = np.array(final_preds)
             targets = np.array(targets)
             
-            # Calculate accuracy again for verification
+            # Calculate accuracy
             accuracy = 100.0 * (final_preds == targets).sum() / len(targets)
             
-            # Calculate precision, recall for class 1 (positive returns)
+            # Calculate precision, recall
             tp = ((final_preds == 1) & (targets == 1)).sum()
             fp = ((final_preds == 1) & (targets == 0)).sum()
             fn = ((final_preds == 0) & (targets == 1)).sum()
@@ -429,7 +414,7 @@ def train():
         print(f"  Transformer MSE: {avg_test_transformer_loss:.6f}")
         print(f"  CNN MSE: {avg_test_cnn_loss:.6f}")
         
-        # Calculate Information Coefficient (IC) for regression
+        # Calculate IC
         if len(final_preds) > 1:
             final_preds = np.array(final_preds)
             

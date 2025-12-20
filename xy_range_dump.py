@@ -26,10 +26,6 @@ def generate_date_list(start_date_str: str, end_date_str: str):
 
 
 def load_universe_map(top: int, universe_file: str | None = None) -> dict:
-    """
-    top30_universe.json 같은 파일을 한 번만 읽어서 dict 로 올려둔다.
-    { "2025-03-01": ["BTCUSDT", ...], ... }
-    """
     if universe_file is None:
         universe_file = f"top{top}_universe.json"
     if not os.path.exists(universe_file):
@@ -54,22 +50,12 @@ def _merge_x_y_for_date(
     out_dir: str,
     how: str = "inner",
 ) -> tuple[str, int]:
-    """
-    한 날짜에 대해:
-      1) X 생성 (in-memory)
-      2) Y 생성 (in-memory)
-      3) symbol + start_time_ms 기준으로 merge
-      4) data/xy/{date}_xy_top{top}.h5 로 저장
-
-    return: (date_str, return_code) 0 이면 성공, 그 외는 실패
-    """
     try:
         if date_str not in universe_map:
             raise KeyError(f"{date_str} not in universe_map")
 
         universe = universe_map[date_str]
 
-        # --- X 생성 ---
         x_df = make_x(
             date_str=date_str,
             universe=universe,
@@ -77,7 +63,6 @@ def _merge_x_y_for_date(
             add_neutralized=True,
         )
 
-        # --- Y 생성 ---
         y_df = make_y(
             date_str=date_str,
             universe=universe,
@@ -86,7 +71,6 @@ def _merge_x_y_for_date(
             window_list=windows,
         )
 
-        # y_generator 는 open_time_ms 로 rename 했으므로 다시 start_time_ms 로 맞춰준다.
         if "start_time_ms" not in y_df.columns:
             if "open_time_ms" not in y_df.columns:
                 raise KeyError(
@@ -95,7 +79,6 @@ def _merge_x_y_for_date(
             y_df = y_df.copy()
             y_df["start_time_ms"] = y_df["open_time_ms"]
 
-        # --- merge ---
         merged = pd.merge(
             x_df,
             y_df,
@@ -104,18 +87,15 @@ def _merge_x_y_for_date(
             suffixes=("", "_ydup"),
         )
 
-        # open_time_ms 는 정보상 start_time_ms 와 동일하므로 있으면 제거
         if "open_time_ms" in merged.columns:
             merged = merged.drop(columns=["open_time_ms"])
 
-        # 혹시 suffix 붙은 중복 컬럼이 있다면 정리
         dup_cols = [c for c in merged.columns if c.endswith("_ydup")]
         if dup_cols:
             merged = merged.drop(columns=dup_cols)
 
         merged = merged.sort_values(["start_time_ms", "symbol"]).reset_index(drop=True)
 
-        # --- 저장 ---
         os.makedirs(out_dir, exist_ok=True)
         out_path = os.path.join(out_dir, f"{date_str}_xy_top{top}.h5")
         merged.to_hdf(out_path, key="xy", mode="w")

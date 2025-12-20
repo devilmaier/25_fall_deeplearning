@@ -68,7 +68,6 @@ def y_generator(
 
   df = df[df["symbol"].isin(universe)].copy()
 
-  # Use number of loaded days for validation
   df = preprocess_data(df, num_dates=len(paths))
   df.sort_values(["symbol", "start_time_ms"], inplace=True)
 
@@ -82,12 +81,10 @@ def y_generator(
 
   diff_df = pd.concat(diff_cols, axis=1)
 
-  # Limit to base times within target_date only
   base = pd.concat([df[["symbol", "start_time_ms"]], diff_df], axis=1)
   dt = pd.to_datetime(base["start_time_ms"], unit="ms", utc=True)
   base = base[dt.dt.date == target_date].copy()
 
-  # Cross-sectional mean subtraction per timestamp for each window
   for w in window_list:
     raw_col = f"{w}_diff"
     y_col = f"y_{w}m"

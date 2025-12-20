@@ -53,7 +53,7 @@ CONFIG = {
     
     # Hybrid Loss weights (used if loss_type='hybrid')
     'mse_weight': 0.2,      # Weight for MSE component
-    'dir_weight': 0.1,      # Weight for directional component (방향 중시!)
+    'dir_weight': 0.1,      # Weight for directional component
     'ic_weight': 0.4,       # Weight for IC component
     
     # Adaptive Loss settings (used if loss_type='adaptive')
@@ -66,27 +66,16 @@ CONFIG = {
 
 
 def compute_stats(loader, num_workers=0):
-    """
-    Scans the training set to compute Mean and Std for each feature.
-    For Mamba: input shape is (Batch, Time, Nodes, Features)
-    Returns tensors of shape (1, 1, 1, Feature_Dim).
-    
-    Args:
-        loader: DataLoader (can have num_workers=0)
-        num_workers: Number of workers for parallel data loading
-    
-    Note: This function will recreate the DataLoader with specified num_workers
-    """
     print(f"[INFO] Computing input statistics (Mean, Std) for CryptoMamba...")
     if num_workers > 0:
         print(f"[INFO] Using {num_workers} workers for parallel data loading")
     
-    # Recreate loader with specified num_workers for faster loading
+    # Recreate loader with specified num_workers
     if num_workers > 0:
         fast_loader = DataLoader(
             loader.dataset,
             batch_size=loader.batch_size,
-            shuffle=False,  # Don't shuffle for statistics
+            shuffle=False,
             num_workers=num_workers,
             pin_memory=True if torch.cuda.is_available() else False,
             persistent_workers=True if num_workers > 0 else False
@@ -98,7 +87,6 @@ def compute_stats(loader, num_workers=0):
     sum_sq_x = 0
     count = 0
 
-    # Iterate over the entire training set
     for x, _ in tqdm(fast_loader, desc="Scanning Data"):
         # x shape: (Batch, Time, Nodes, Features)
         
@@ -122,20 +110,9 @@ def compute_stats(loader, num_workers=0):
 
 
 def compute_stats_fast(dataset, batch_size=32, num_workers=24):
-    """
-    Fast version of compute_stats using optimized DataLoader settings.
-    
-    Args:
-        dataset: Dataset object
-        batch_size: Batch size for loading (larger = faster but more memory)
-        num_workers: Number of parallel workers (default: 24)
-    
-    Returns:
-        mean, std: Statistics tensors
-    """
     print(f"[FAST] Computing statistics with {num_workers} workers, batch_size={batch_size}")
     
-    # Create optimized DataLoader
+    # Create DataLoader
     loader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -143,7 +120,7 @@ def compute_stats_fast(dataset, batch_size=32, num_workers=24):
         num_workers=num_workers,
         pin_memory=True if torch.cuda.is_available() else False,
         persistent_workers=True,
-        prefetch_factor=2  # Prefetch 2 batches per worker
+        prefetch_factor=2
     )
     
     sum_x = 0
@@ -164,20 +141,6 @@ def compute_stats_fast(dataset, batch_size=32, num_workers=24):
 
 
 def load_from_cache(export_path, batch_size, num_workers=4, device='cpu', compute_normalization=True):
-    """
-    Directly load DataLoaders from cached files without rebuilding dataset.
-    This is faster when you already have processed and exported data.
-    
-    Args:
-        export_path: Path to cached dataset directory
-        batch_size: Batch size for DataLoader
-        num_workers: Number of workers for DataLoader
-        device: Device to load statistics to (for normalization)
-        compute_normalization: If False, skip normalization computation (use zeros/ones)
-    
-    Returns:
-        train_loader, val_loader, test_loader, feature_dim, input_mean, input_std
-    """
     print(f"[CACHE] Loading dataset directly from {export_path}")
     
     # Check if all required files exist
@@ -235,7 +198,7 @@ def load_from_cache(export_path, batch_size, num_workers=4, device='cpu', comput
     # Compute or skip normalization statistics
     if compute_normalization:
         print(f"[CACHE] Computing normalization statistics with {num_workers} workers...")
-        # Use fast version with dataset directly for maximum speed
+        # Use fast version with dataset directly
         input_mean, input_std = compute_stats_fast(
             train_ds, 
             batch_size=batch_size * 2,  # Use larger batch for stats computation
@@ -276,16 +239,16 @@ def train():
     
     # 2. Load data (either from cache or rebuild)
     if use_direct_cache:
-        # Direct cache loading - fastest method
+        # Direct cache loading
         train_loader, val_loader, test_loader, feature_dim, input_mean, input_std = load_from_cache(
             export_path=CONFIG['export_path'],
             batch_size=CONFIG['batch_size'],
-            num_workers=CONFIG['num_workers'],  # Use configured num_workers
+            num_workers=CONFIG['num_workers'],
             device=CONFIG['device'],
-            compute_normalization=not CONFIG['skip_normalization']  # Skip if data already normalized
+            compute_normalization=not CONFIG['skip_normalization']
         )
     else:
-        # Normal loading with get_mamba_loaders (will create cache if export_path is set)
+        # Normal loading with get_mamba_loaders
         print(f"[INFO] Loading data using get_mamba_loaders...")
         train_loader, val_loader, test_loader, feature_dim = get_mamba_loaders(
             data_dir=CONFIG['data_dir'],
@@ -300,14 +263,14 @@ def train():
             export_path=CONFIG['export_path'],
         )
         
-        # Compute statistics for normalization (or skip if already normalized)
+        # Compute statistics for normalization
         if CONFIG['skip_normalization']:
             print(f"[INFO] Skipping normalization (data already normalized)")
             input_mean = torch.zeros(1, 1, 1, feature_dim).to(CONFIG['device'])
             input_std = torch.ones(1, 1, 1, feature_dim).to(CONFIG['device'])
         else:
             print(f"[INFO] Computing normalization statistics with {CONFIG['num_workers']} workers...")
-            # Use fast version with dataset directly
+            # Use fast version
             input_mean, input_std = compute_stats_fast(
                 train_loader.dataset,
                 batch_size=CONFIG['batch_size'] * 2,
@@ -319,7 +282,7 @@ def train():
     CONFIG['input_dim'] = feature_dim
     print(f"\n[INFO] Input feature dim: {feature_dim}")
 
-    # 3. Initialize Model with Stats
+    # Initialize Model
     model = CryptoMamba(
         num_nodes=CONFIG['num_nodes'],
         input_dim=CONFIG['input_dim'], 
@@ -336,7 +299,7 @@ def train():
     
     print(f"[INFO] Model initialized with {sum(p.numel() for p in model.parameters())} parameters")
     
-    # 4. Initialize Loss Function
+    # Initialize Loss Function
     print(f"\n[INFO] Loss Function: {CONFIG['loss_type']}")
     
     if CONFIG['loss_type'] == 'mse':
@@ -367,14 +330,14 @@ def train():
         print(f"    Final weights (MSE, Dir, IC):   {CONFIG['final_weights']}")
     
     else:
-        # Use factory function for other loss types
+        # Use factory function
         criterion = get_loss_function(
             loss_type=CONFIG['loss_type'],
             temperature=CONFIG.get('temperature', 1.0)
         )
         print(f"  - Using {CONFIG['loss_type']} loss")
     
-    # Track if using custom loss (returns dict)
+    # Track if using custom loss
     use_custom_loss = CONFIG['loss_type'] in ['hybrid', 'adaptive', 'directional', 'ic']
     
     optimizer = optim.AdamW(model.parameters(), lr=CONFIG['lr'])
@@ -383,10 +346,10 @@ def train():
     best_val_loss = float('inf')
     model_saved = False
 
-    # 5. Training Loop
+    # Training Loop
     print("\n[INFO] Start Training...")
     for epoch in range(CONFIG['epochs']):
-        # Update adaptive loss weights if using adaptive loss
+        # Update adaptive loss weights
         if CONFIG['loss_type'] == 'adaptive':
             criterion.set_epoch(epoch)
             weights = (
@@ -396,7 +359,7 @@ def train():
             )
             print(f"\n[Epoch {epoch+1}] Adaptive weights: MSE={weights[0]:.2f}, Dir={weights[1]:.2f}, IC={weights[2]:.2f}")
         
-        # --- Train Step ---
+        # Train Step
         model.train()
         train_loss = 0.0
         train_loss_components = {'mse': 0.0, 'directional': 0.0, 'ic_loss': 0.0, 'ic_value': 0.0}
@@ -404,7 +367,7 @@ def train():
         for batch_idx, (x, y) in enumerate(tqdm(train_loader, desc=f"Epoch {epoch+1}/{CONFIG['epochs']} [Train]")):
             x, y = x.to(CONFIG['device']), y.to(CONFIG['device'])
             
-            # Debug: Check for NaN/Inf in input data
+            # Check for NaN/Inf in input data
             if torch.isnan(x).any():
                 print(f"[WARNING] NaN detected in input data at batch {batch_idx}")
                 continue
@@ -417,20 +380,17 @@ def train():
             
             optimizer.zero_grad()
             
-            # Forward pass
-            predictions = model(x)  # (Batch, Nodes)
+            predictions = model(x)
             
             # Calculate loss
             if use_custom_loss:
-                # Custom loss returns (loss, loss_dict)
                 loss, loss_dict = criterion(predictions, y)
                 
-                # Accumulate loss components for logging
+                # Accumulate loss components
                 for key in loss_dict:
                     if key in train_loss_components:
                         train_loss_components[key] += loss_dict[key]
             else:
-                # Standard MSE loss
                 loss = criterion(predictions, y)
             
             # Check for NaN loss
@@ -440,7 +400,7 @@ def train():
             
             loss.backward()
             
-            # Gradient clipping to prevent exploding gradients
+            # Gradient clipping
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             
             optimizer.step()
@@ -462,7 +422,7 @@ def train():
             if 'ic_value' in train_loss_components:
                 print(f"    IC Value:    {train_loss_components['ic_value'] / num_batches:.6f}")
 
-        # --- Validation Step ---
+        # Validation Step
         model.eval()
         val_loss = 0.0
         val_loss_components = {'mse': 0.0, 'directional': 0.0, 'ic_loss': 0.0, 'ic_value': 0.0}
@@ -521,7 +481,7 @@ def train():
             model_saved = True
             print(f"  -> Model saved (Val loss improved)")
 
-    # 5. Final Evaluation (Test Set)
+    # Final Evaluation
     print("\n[INFO] Evaluating on Test Set...")
     
     # Load best model if it was saved
@@ -551,7 +511,7 @@ def train():
             
             test_loss += loss.item()
             
-            # Flatten predictions and targets for correlation calculation
+            # Flatten predictions and targets
             predictions_list.extend(predictions.cpu().numpy().flatten())
             targets_list.extend(y.cpu().numpy().flatten())
 
@@ -561,7 +521,7 @@ def train():
     print(f"Final Test Results:")
     print(f"  Test MSE: {avg_test_loss:.6f}")
     
-    # Calculate Information Coefficient (IC)
+    # Calculate IC
     if len(predictions_list) > 1:
         ic = np.corrcoef(predictions_list, targets_list)[0, 1]
         print(f"  Test IC (Correlation): {ic:.4f}")

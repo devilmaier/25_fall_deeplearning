@@ -5,18 +5,7 @@ import torch.nn.functional as F
 
 class HybridFinancialLoss(nn.Module):
     """
-    Hybrid Loss Function for Financial Time Series Prediction
-    
-    Combines three objectives:
-    1. MSE: Basic regression accuracy
-    2. Directional: Direction prediction accuracy (up/down)
-    3. IC: Information Coefficient (correlation-based ranking)
-    
-    Args:
-        mse_weight: Weight for MSE loss (default: 0.3)
-        dir_weight: Weight for directional loss (default: 0.4)
-        ic_weight: Weight for IC loss (default: 0.3)
-        temperature: Temperature for smooth sign function (default: 1.0)
+    Hybrid Loss Function for Financial Time Series Prediction.
     """
     def __init__(self, mse_weight=0.3, dir_weight=0.4, ic_weight=0.3, temperature=1.0):
         super().__init__()
@@ -33,15 +22,7 @@ class HybridFinancialLoss(nn.Module):
     
     def forward(self, predictions, targets):
         """
-        Compute hybrid loss
-        
-        Args:
-            predictions: (Batch, Nodes) or (Batch*Nodes,)
-            targets: (Batch, Nodes) or (Batch*Nodes,)
-        
-        Returns:
-            total_loss: Combined loss
-            loss_dict: Dictionary with individual losses
+        Compute hybrid loss.
         """
         # Flatten if needed
         if predictions.dim() > 1:
@@ -105,17 +86,7 @@ class HybridFinancialLoss(nn.Module):
 
 class AdaptiveHybridLoss(nn.Module):
     """
-    Adaptive Hybrid Loss that changes weights during training
-    
-    Strategy:
-    - Early epochs: Focus on MSE (stable learning)
-    - Mid epochs: Balanced
-    - Late epochs: Focus on Direction + IC (trading performance)
-    
-    Args:
-        total_epochs: Total number of training epochs
-        initial_weights: (mse, dir, ic) for early training
-        final_weights: (mse, dir, ic) for late training
+    Adaptive Hybrid Loss that changes weights during training.
     """
     def __init__(self, total_epochs=20, 
                  initial_weights=(0.6, 0.2, 0.2),
@@ -163,10 +134,7 @@ class AdaptiveHybridLoss(nn.Module):
 
 class DirectionalLoss(nn.Module):
     """
-    Simple directional loss (can be used standalone)
-    
-    Penalizes incorrect direction predictions
-    Loss is positive and decreases as directional agreement increases
+    Directional loss.
     """
     def __init__(self, temperature=1.0):
         super().__init__()
@@ -199,7 +167,7 @@ class DirectionalLoss(nn.Module):
 
 class ICLoss(nn.Module):
     """
-    Information Coefficient Loss (maximize correlation)
+    Information Coefficient Loss.
     
     Loss is positive and decreases as IC increases
     """
@@ -233,12 +201,7 @@ class ICLoss(nn.Module):
 
 class RankingLoss(nn.Module):
     """
-    Pairwise ranking loss
-    
-    Ensures that higher predicted values correspond to higher actual returns
-    Good for Long-Short strategies
-    
-    Warning: O(N²) complexity, use with smaller batches
+    Pairwise ranking loss.
     """
     def __init__(self, margin=0.01):
         super().__init__()
@@ -289,14 +252,7 @@ class RankingLoss(nn.Module):
 # Utility function to get loss function by name
 def get_loss_function(loss_type='hybrid', **kwargs):
     """
-    Factory function to get loss function
-    
-    Args:
-        loss_type: 'mse', 'hybrid', 'adaptive', 'directional', 'ic', 'ranking'
-        **kwargs: Additional arguments for loss function
-    
-    Returns:
-        loss_fn: Loss function
+    Factory function to get loss function.
     """
     if loss_type == 'mse':
         return nn.MSELoss()
