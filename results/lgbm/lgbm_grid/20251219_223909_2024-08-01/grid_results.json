@@ -1,0 +1,1186 @@
+[
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 31,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.1492644932367965,
+      "ic_spearman": 0.023644188880162748,
+      "daily_ic_pearson_mean": 0.07532949138657012,
+      "daily_ic_pearson_std": 0.1017942057818469,
+      "daily_ic_spearman_mean": 0.02596881748338833,
+      "daily_ic_spearman_std": 0.03700549902873985,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.013740545401153173,
+      "ic_spearman": 0.004046070412076062,
+      "daily_ic_pearson_mean": 0.008065904220520595,
+      "daily_ic_pearson_std": 0.07276768841076699,
+      "daily_ic_spearman_mean": 0.005687891141545751,
+      "daily_ic_spearman_std": 0.03319224204455622,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": -0.02285735897964312,
+      "ic_spearman": -0.007990719200187896,
+      "daily_ic_pearson_mean": -0.007125886563073118,
+      "daily_ic_pearson_std": 0.0509794813635192,
+      "daily_ic_spearman_mean": -0.006353508083476716,
+      "daily_ic_spearman_std": 0.02182586442638524,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_224030"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 31,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.19803864416144978,
+      "ic_spearman": 0.027104518115964676,
+      "daily_ic_pearson_mean": 0.09462129688791349,
+      "daily_ic_pearson_std": 0.1297992693887287,
+      "daily_ic_spearman_mean": 0.024418408745526244,
+      "daily_ic_spearman_std": 0.04009924052882472,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.018942133993008484,
+      "ic_spearman": -0.00483910603565197,
+      "daily_ic_pearson_mean": 0.010710778539690536,
+      "daily_ic_pearson_std": 0.0549379982424009,
+      "daily_ic_spearman_mean": -0.004244829700176047,
+      "daily_ic_spearman_std": 0.02710118307205855,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.04332285874707179,
+      "ic_spearman": 0.0009638188901841188,
+      "daily_ic_pearson_mean": 0.017448138019678212,
+      "daily_ic_pearson_std": 0.06038811396626133,
+      "daily_ic_spearman_mean": -0.0024180667469848017,
+      "daily_ic_spearman_std": 0.033596614996732777,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_224203"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 31,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.18215381916277518,
+      "ic_spearman": 0.024909587953007867,
+      "daily_ic_pearson_mean": 0.09640377295467106,
+      "daily_ic_pearson_std": 0.12185295513627013,
+      "daily_ic_spearman_mean": 0.02325051278747058,
+      "daily_ic_spearman_std": 0.03489556635406811,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.009872700942009259,
+      "ic_spearman": 0.0037274605871821177,
+      "daily_ic_pearson_mean": 0.010485889246676856,
+      "daily_ic_pearson_std": 0.07074269382469832,
+      "daily_ic_spearman_mean": 0.0027826266927980623,
+      "daily_ic_spearman_std": 0.03219819610405777,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.03945613155601875,
+      "ic_spearman": 0.003474416883242733,
+      "daily_ic_pearson_mean": 0.025893012948719485,
+      "daily_ic_pearson_std": 0.04117414592569853,
+      "daily_ic_spearman_mean": 0.001201229903825534,
+      "daily_ic_spearman_std": 0.029140186612581477,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_224328"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 31,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.16256658595259116,
+      "ic_spearman": 0.02532979277277765,
+      "daily_ic_pearson_mean": 0.0803815558936223,
+      "daily_ic_pearson_std": 0.11901063568985303,
+      "daily_ic_spearman_mean": 0.023538887750851518,
+      "daily_ic_spearman_std": 0.039944190215527114,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.005785150598067545,
+      "ic_spearman": -0.0006477648078579945,
+      "daily_ic_pearson_mean": -0.006263639775847672,
+      "daily_ic_pearson_std": 0.05879857596843574,
+      "daily_ic_spearman_mean": -0.0001944391983754531,
+      "daily_ic_spearman_std": 0.03967227369395797,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.014130208240870449,
+      "ic_spearman": 0.00028207707443326206,
+      "daily_ic_pearson_mean": 0.0019897169089537433,
+      "daily_ic_pearson_std": 0.043036403556565066,
+      "daily_ic_spearman_mean": -0.003274958171576544,
+      "daily_ic_spearman_std": 0.032778626396493725,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_224442"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 31,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.03982451224107361,
+      "ic_spearman": 0.017644835718899497,
+      "daily_ic_pearson_mean": 0.02591885973529618,
+      "daily_ic_pearson_std": 0.07059445267194892,
+      "daily_ic_spearman_mean": 0.014329844614095387,
+      "daily_ic_spearman_std": 0.040737279500433175,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.039180213951396294,
+      "ic_spearman": 0.02679569202389544,
+      "daily_ic_pearson_mean": 0.030762673172165543,
+      "daily_ic_pearson_std": 0.055367023665132825,
+      "daily_ic_spearman_mean": 0.028864104838017893,
+      "daily_ic_spearman_std": 0.03680494920764749,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": -0.0028176782831984843,
+      "ic_spearman": 0.004329279769327037,
+      "daily_ic_pearson_mean": 8.799349580428193e-05,
+      "daily_ic_pearson_std": 0.0384835671864301,
+      "daily_ic_spearman_mean": 0.0013291707927329769,
+      "daily_ic_spearman_std": 0.024459308917048245,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_224557"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 31,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.16876863133349337,
+      "ic_spearman": 0.05392511448294586,
+      "daily_ic_pearson_mean": 0.11211798167904626,
+      "daily_ic_pearson_std": 0.09945925539043292,
+      "daily_ic_spearman_mean": 0.05254720399548296,
+      "daily_ic_spearman_std": 0.04271071210401266,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.008087086700883993,
+      "ic_spearman": 0.01400912897202342,
+      "daily_ic_pearson_mean": 0.002217442400725122,
+      "daily_ic_pearson_std": 0.05938797262992254,
+      "daily_ic_spearman_mean": 0.014700154479273211,
+      "daily_ic_spearman_std": 0.041208965598962005,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.0495613416864033,
+      "ic_spearman": 0.0002511841326129134,
+      "daily_ic_pearson_mean": 0.03414048583311698,
+      "daily_ic_pearson_std": 0.06820874758639953,
+      "daily_ic_spearman_mean": 0.002591793208748324,
+      "daily_ic_spearman_std": 0.0233688987552009,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_224712"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 31,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.04333055349457685,
+      "ic_spearman": 0.028154705961105385,
+      "daily_ic_pearson_mean": 0.031631550442643146,
+      "daily_ic_pearson_std": 0.07131757118251521,
+      "daily_ic_spearman_mean": 0.029317697126296328,
+      "daily_ic_spearman_std": 0.029031748780044234,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.010271731357635278,
+      "ic_spearman": 0.011636678617759987,
+      "daily_ic_pearson_mean": 0.012237067267647839,
+      "daily_ic_pearson_std": 0.05358760078092537,
+      "daily_ic_spearman_mean": 0.015618980829688977,
+      "daily_ic_spearman_std": 0.03285607336397904,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.028238802019383485,
+      "ic_spearman": -0.0016397383651347236,
+      "daily_ic_pearson_mean": 0.022521478199919603,
+      "daily_ic_pearson_std": 0.05742076655191368,
+      "daily_ic_spearman_mean": -0.0010083549585894994,
+      "daily_ic_spearman_std": 0.020383715426856425,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_224827"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 31,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.06665738389760953,
+      "ic_spearman": 0.025543893281680087,
+      "daily_ic_pearson_mean": 0.04628479683747757,
+      "daily_ic_pearson_std": 0.08573184626112562,
+      "daily_ic_spearman_mean": 0.025751855891337928,
+      "daily_ic_spearman_std": 0.045407672791719714,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": -0.005384658429720059,
+      "ic_spearman": 0.011658259262533461,
+      "daily_ic_pearson_mean": -0.011309413729613952,
+      "daily_ic_pearson_std": 0.06407028071052655,
+      "daily_ic_spearman_mean": 0.014045993972567606,
+      "daily_ic_spearman_std": 0.045949256740983234,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.01853502722625809,
+      "ic_spearman": -0.00426153134043177,
+      "daily_ic_pearson_mean": 0.0028767824441216726,
+      "daily_ic_pearson_std": 0.06154743768469926,
+      "daily_ic_spearman_mean": 2.7520010181285998e-05,
+      "daily_ic_spearman_std": 0.0548545992133744,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_224945"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 127,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.2014602524221129,
+      "ic_spearman": 0.052014933539300326,
+      "daily_ic_pearson_mean": 0.13185363170099182,
+      "daily_ic_pearson_std": 0.10993394703103351,
+      "daily_ic_spearman_mean": 0.053287957647918556,
+      "daily_ic_spearman_std": 0.04189348264041405,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.013055271341258766,
+      "ic_spearman": 0.005241792361458172,
+      "daily_ic_pearson_mean": 0.0052218209519452235,
+      "daily_ic_pearson_std": 0.06970210998811545,
+      "daily_ic_spearman_mean": 0.008081015730124772,
+      "daily_ic_spearman_std": 0.03304975503815471,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": -0.023153294184300986,
+      "ic_spearman": -0.0008460550642830498,
+      "daily_ic_pearson_mean": -0.00651821487269126,
+      "daily_ic_pearson_std": 0.05259642550569956,
+      "daily_ic_spearman_mean": -0.00019528640376897713,
+      "daily_ic_spearman_std": 0.03639238307783556,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_225119"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 127,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.36205982639430195,
+      "ic_spearman": 0.08100512933134199,
+      "daily_ic_pearson_mean": 0.2419617819577238,
+      "daily_ic_pearson_std": 0.15616408229668535,
+      "daily_ic_spearman_mean": 0.08026624522494928,
+      "daily_ic_spearman_std": 0.05729345773452545,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.012650857851245593,
+      "ic_spearman": 0.024486775246379662,
+      "daily_ic_pearson_mean": 0.008489510635777745,
+      "daily_ic_pearson_std": 0.05219462135207311,
+      "daily_ic_spearman_mean": 0.028533008806532242,
+      "daily_ic_spearman_std": 0.040996183005668714,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.04999667855253967,
+      "ic_spearman": 0.0039104690547515815,
+      "daily_ic_pearson_mean": 0.03316335452599065,
+      "daily_ic_pearson_std": 0.047017899477690556,
+      "daily_ic_spearman_mean": 0.0059632747628313295,
+      "daily_ic_spearman_std": 0.020969053644586642,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_225252"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 127,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.16362645524247646,
+      "ic_spearman": 0.03995236019453844,
+      "daily_ic_pearson_mean": 0.11200366944773267,
+      "daily_ic_pearson_std": 0.10635052448437476,
+      "daily_ic_spearman_mean": 0.037881133507598606,
+      "daily_ic_spearman_std": 0.044866545885943104,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.0028080322306159966,
+      "ic_spearman": 0.018415532164803614,
+      "daily_ic_pearson_mean": 0.0032679269368948837,
+      "daily_ic_pearson_std": 0.05243986648973775,
+      "daily_ic_spearman_mean": 0.01735443289361027,
+      "daily_ic_spearman_std": 0.029569625448882055,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.024067960376945804,
+      "ic_spearman": -0.017259278319110716,
+      "daily_ic_pearson_mean": 0.02272664104757846,
+      "daily_ic_pearson_std": 0.02856840956215795,
+      "daily_ic_spearman_mean": -0.019346041573333122,
+      "daily_ic_spearman_std": 0.026778521216373877,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_225419"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 127,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.2715591267331868,
+      "ic_spearman": 0.060590948847597144,
+      "daily_ic_pearson_mean": 0.16519588117213496,
+      "daily_ic_pearson_std": 0.13889274346225164,
+      "daily_ic_spearman_mean": 0.06151104281157622,
+      "daily_ic_spearman_std": 0.04871628577634938,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.02033141898157062,
+      "ic_spearman": 0.00967576799836093,
+      "daily_ic_pearson_mean": 0.011579991732814392,
+      "daily_ic_pearson_std": 0.04063132641486723,
+      "daily_ic_spearman_mean": 0.011965879801209516,
+      "daily_ic_spearman_std": 0.04071975496388521,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": -5.438609814953666e-05,
+      "ic_spearman": -0.001978357651121437,
+      "daily_ic_pearson_mean": 0.0018628582087029059,
+      "daily_ic_pearson_std": 0.034332910411724815,
+      "daily_ic_spearman_mean": -0.0008316198421146991,
+      "daily_ic_spearman_std": 0.04282783729855395,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_225545"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 127,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.04914138522087419,
+      "ic_spearman": 0.037175751591583,
+      "daily_ic_pearson_mean": 0.04184071784335031,
+      "daily_ic_pearson_std": 0.05679740990622351,
+      "daily_ic_spearman_mean": 0.03627365831846664,
+      "daily_ic_spearman_std": 0.03207268481041851,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.037092421031337516,
+      "ic_spearman": 0.024747161958845642,
+      "daily_ic_pearson_mean": 0.03180060940779708,
+      "daily_ic_pearson_std": 0.047675605598211365,
+      "daily_ic_spearman_mean": 0.03016699419669844,
+      "daily_ic_spearman_std": 0.032267168418120766,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": -0.004257398660045464,
+      "ic_spearman": -0.005559379415769264,
+      "daily_ic_pearson_mean": -0.0026063919926075647,
+      "daily_ic_pearson_std": 0.02864955533374241,
+      "daily_ic_spearman_mean": -0.0031117637849077256,
+      "daily_ic_spearman_std": 0.023905451907239795,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_225716"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 127,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.2474251458642238,
+      "ic_spearman": 0.11748848438974556,
+      "daily_ic_pearson_mean": 0.2039717392454407,
+      "daily_ic_pearson_std": 0.08883862619158081,
+      "daily_ic_spearman_mean": 0.11375731381287987,
+      "daily_ic_spearman_std": 0.04584780857958574,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.013409922000126103,
+      "ic_spearman": 0.020025093163069833,
+      "daily_ic_pearson_mean": 0.01214316638786634,
+      "daily_ic_pearson_std": 0.053203480777009114,
+      "daily_ic_spearman_mean": 0.02052310067929138,
+      "daily_ic_spearman_std": 0.034140210102339225,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.03652444966445285,
+      "ic_spearman": 0.0028963551684440887,
+      "daily_ic_pearson_mean": 0.02620926559242998,
+      "daily_ic_pearson_std": 0.062321369882876794,
+      "daily_ic_spearman_mean": 0.0032055986584525673,
+      "daily_ic_spearman_std": 0.03117372665504536,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_225845"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 127,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.05428723712596918,
+      "ic_spearman": 0.03751431281711039,
+      "daily_ic_pearson_mean": 0.04764243059440363,
+      "daily_ic_pearson_std": 0.0607318157793908,
+      "daily_ic_spearman_mean": 0.03597476384236984,
+      "daily_ic_spearman_std": 0.03504801225826865,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.00836994151852992,
+      "ic_spearman": 0.006726176353311416,
+      "daily_ic_pearson_mean": 0.011019808146613519,
+      "daily_ic_pearson_std": 0.0456739578170253,
+      "daily_ic_spearman_mean": 0.008406527222042293,
+      "daily_ic_spearman_std": 0.026098851414848242,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.023368989079832446,
+      "ic_spearman": -0.009837111068343762,
+      "daily_ic_pearson_mean": 0.01925254346477719,
+      "daily_ic_pearson_std": 0.0346565658862279,
+      "daily_ic_spearman_mean": -0.005165916465014503,
+      "daily_ic_spearman_std": 0.017650910226546683,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_230015"
+  },
+  {
+    "params": {
+      "learning_rate": 0.01,
+      "num_leaves": 127,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.09232618450655326,
+      "ic_spearman": 0.04182068851547876,
+      "daily_ic_pearson_mean": 0.07661370073210429,
+      "daily_ic_pearson_std": 0.07457990208025221,
+      "daily_ic_spearman_mean": 0.039115880073018076,
+      "daily_ic_spearman_std": 0.0376148166650016,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.003462776412880772,
+      "ic_spearman": 0.012991593266667663,
+      "daily_ic_pearson_mean": 0.0007466617667881364,
+      "daily_ic_pearson_std": 0.054046701511472464,
+      "daily_ic_spearman_mean": 0.01413735008478069,
+      "daily_ic_spearman_std": 0.025053230730367915,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.025077303244544477,
+      "ic_spearman": 0.0047793709875597265,
+      "daily_ic_pearson_mean": 0.023114384869564204,
+      "daily_ic_pearson_std": 0.0597249884762703,
+      "daily_ic_spearman_mean": 0.006695807978722836,
+      "daily_ic_spearman_std": 0.02998699077101029,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_230142"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 31,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.14821363122992257,
+      "ic_spearman": 0.023251920035478876,
+      "daily_ic_pearson_mean": 0.07506581549886607,
+      "daily_ic_pearson_std": 0.10044544286498387,
+      "daily_ic_spearman_mean": 0.02592919622378757,
+      "daily_ic_spearman_std": 0.036598125144204866,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.015131568956528119,
+      "ic_spearman": 0.0030807153199656225,
+      "daily_ic_pearson_mean": 0.009192495000564944,
+      "daily_ic_pearson_std": 0.0723064532863436,
+      "daily_ic_spearman_mean": 0.004665899455149903,
+      "daily_ic_spearman_std": 0.03301317784986135,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": -0.020667292038724708,
+      "ic_spearman": -0.007825909168021504,
+      "daily_ic_pearson_mean": -0.006054421143682226,
+      "daily_ic_pearson_std": 0.04764760603423127,
+      "daily_ic_spearman_mean": -0.006379004697649145,
+      "daily_ic_spearman_std": 0.02112697890186947,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_230410"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 31,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.2635513017005661,
+      "ic_spearman": 0.03612340978176667,
+      "daily_ic_pearson_mean": 0.14587947205159651,
+      "daily_ic_pearson_std": 0.15071650515321047,
+      "daily_ic_spearman_mean": 0.03791590311776982,
+      "daily_ic_spearman_std": 0.04852258012185842,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.008295471334657864,
+      "ic_spearman": 0.005634432407167472,
+      "daily_ic_pearson_mean": -0.004778011132201314,
+      "daily_ic_pearson_std": 0.07315778057691912,
+      "daily_ic_spearman_mean": 0.008852340641196233,
+      "daily_ic_spearman_std": 0.028032190780447264,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.04903397716640823,
+      "ic_spearman": 0.0051082673334739166,
+      "daily_ic_pearson_mean": 0.03478253949050337,
+      "daily_ic_pearson_std": 0.0605718257419089,
+      "daily_ic_spearman_mean": 0.00944732965624233,
+      "daily_ic_spearman_std": 0.0240929641777917,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_230545"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 31,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.18057597688422194,
+      "ic_spearman": 0.024217438634842537,
+      "daily_ic_pearson_mean": 0.09482763961669669,
+      "daily_ic_pearson_std": 0.12285309639723904,
+      "daily_ic_spearman_mean": 0.022468985095832714,
+      "daily_ic_spearman_std": 0.03592757955727641,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.007602151194144284,
+      "ic_spearman": 0.004627785114147541,
+      "daily_ic_pearson_mean": 0.008173448016528672,
+      "daily_ic_pearson_std": 0.07086577303587488,
+      "daily_ic_spearman_mean": 0.004279060482357473,
+      "daily_ic_spearman_std": 0.03143785924288745,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.039260364975975466,
+      "ic_spearman": 0.0015111170089017133,
+      "daily_ic_pearson_mean": 0.024484740795023663,
+      "daily_ic_pearson_std": 0.04291888147288619,
+      "daily_ic_spearman_mean": -0.0005574518452969949,
+      "daily_ic_spearman_std": 0.032440794686718046,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_230719"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 31,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.28281364167301837,
+      "ic_spearman": 0.037615847974557005,
+      "daily_ic_pearson_mean": 0.15552564832778087,
+      "daily_ic_pearson_std": 0.155039345181672,
+      "daily_ic_spearman_mean": 0.03781954896550217,
+      "daily_ic_spearman_std": 0.050616512982406145,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.009995996815951858,
+      "ic_spearman": -0.0027940697679753016,
+      "daily_ic_pearson_mean": -0.006583906590385067,
+      "daily_ic_pearson_std": 0.06893963758174654,
+      "daily_ic_spearman_mean": -0.0019309162117060314,
+      "daily_ic_spearman_std": 0.023971991958896453,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.05260381377568607,
+      "ic_spearman": 0.00012057546289233144,
+      "daily_ic_pearson_mean": 0.03547602427018254,
+      "daily_ic_pearson_std": 0.06857983937157158,
+      "daily_ic_spearman_mean": -0.0017126430545127283,
+      "daily_ic_spearman_std": 0.03110556217433199,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_230842"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 31,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.03982451224107362,
+      "ic_spearman": 0.017644835718899497,
+      "daily_ic_pearson_mean": 0.025918859735296174,
+      "daily_ic_pearson_std": 0.07059445267194892,
+      "daily_ic_spearman_mean": 0.014329844614095387,
+      "daily_ic_spearman_std": 0.040737279500433175,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.03918021395139627,
+      "ic_spearman": 0.02679569202389544,
+      "daily_ic_pearson_mean": 0.030762673172165547,
+      "daily_ic_pearson_std": 0.055367023665132825,
+      "daily_ic_spearman_mean": 0.028864104838017893,
+      "daily_ic_spearman_std": 0.03680494920764749,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": -0.0028176782831984878,
+      "ic_spearman": 0.004329279769327037,
+      "daily_ic_pearson_mean": 8.799349580428251e-05,
+      "daily_ic_pearson_std": 0.0384835671864301,
+      "daily_ic_spearman_mean": 0.0013291707927329769,
+      "daily_ic_spearman_std": 0.024459308917048245,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_231005"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 31,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.16404099705521713,
+      "ic_spearman": 0.05318323279692708,
+      "daily_ic_pearson_mean": 0.10942671637578111,
+      "daily_ic_pearson_std": 0.09951673012803483,
+      "daily_ic_spearman_mean": 0.051369548845494675,
+      "daily_ic_spearman_std": 0.04276546084742568,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.007499643271849777,
+      "ic_spearman": 0.012853511599401467,
+      "daily_ic_pearson_mean": 0.0003069913399423801,
+      "daily_ic_pearson_std": 0.06040243892345756,
+      "daily_ic_spearman_mean": 0.01412948538873171,
+      "daily_ic_spearman_std": 0.040609057582122424,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.04137853196168516,
+      "ic_spearman": -0.0015908452217822191,
+      "daily_ic_pearson_mean": 0.028273791156756736,
+      "daily_ic_pearson_std": 0.059306176017829774,
+      "daily_ic_spearman_mean": 0.001505505901984848,
+      "daily_ic_spearman_std": 0.02054737237140312,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_231134"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 31,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.04333055349457685,
+      "ic_spearman": 0.028154705961105385,
+      "daily_ic_pearson_mean": 0.031631550442643146,
+      "daily_ic_pearson_std": 0.07131757118251521,
+      "daily_ic_spearman_mean": 0.029317697126296328,
+      "daily_ic_spearman_std": 0.029031748780044234,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.010271731357635275,
+      "ic_spearman": 0.011636678617759987,
+      "daily_ic_pearson_mean": 0.01223706726764784,
+      "daily_ic_pearson_std": 0.053587600780925386,
+      "daily_ic_spearman_mean": 0.015618980829688977,
+      "daily_ic_spearman_std": 0.03285607336397904,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.028238802019383485,
+      "ic_spearman": -0.0016397383651347236,
+      "daily_ic_pearson_mean": 0.022521478199919592,
+      "daily_ic_pearson_std": 0.05742076655191372,
+      "daily_ic_spearman_mean": -0.0010083549585894994,
+      "daily_ic_spearman_std": 0.020383715426856425,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_231332"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 31,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.18023250512409458,
+      "ic_spearman": 0.060561696526742696,
+      "daily_ic_pearson_mean": 0.12123990051485607,
+      "daily_ic_pearson_std": 0.09962524391686282,
+      "daily_ic_spearman_mean": 0.06018992828733506,
+      "daily_ic_spearman_std": 0.04844362313763104,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.0010057081640940412,
+      "ic_spearman": 0.021504619323144628,
+      "daily_ic_pearson_mean": -0.001645077608617329,
+      "daily_ic_pearson_std": 0.06341195708417655,
+      "daily_ic_spearman_mean": 0.020658746837348793,
+      "daily_ic_spearman_std": 0.041647274745705364,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.04435526956480921,
+      "ic_spearman": 0.008679658319465763,
+      "daily_ic_pearson_mean": 0.030852461134665454,
+      "daily_ic_pearson_std": 0.05682597546059585,
+      "daily_ic_spearman_mean": 0.009551790660171687,
+      "daily_ic_spearman_std": 0.02790946033496176,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_231529"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 127,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.30518335775848715,
+      "ic_spearman": 0.08522093105941646,
+      "daily_ic_pearson_mean": 0.21613590921568548,
+      "daily_ic_pearson_std": 0.13098173992810494,
+      "daily_ic_spearman_mean": 0.0825999243075985,
+      "daily_ic_spearman_std": 0.047765369892315813,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.00991688356492632,
+      "ic_spearman": 0.011732075080725612,
+      "daily_ic_pearson_mean": 0.00037834944179408796,
+      "daily_ic_pearson_std": 0.0636766900863549,
+      "daily_ic_spearman_mean": 0.013419405789839921,
+      "daily_ic_spearman_std": 0.03291795507070843,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.02952399035835056,
+      "ic_spearman": 0.009011517611005713,
+      "daily_ic_pearson_mean": 0.02781950748709573,
+      "daily_ic_pearson_std": 0.042393576453867564,
+      "daily_ic_spearman_mean": 0.00794886570754908,
+      "daily_ic_spearman_std": 0.020097311560320304,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_231702"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 127,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.3945087298801504,
+      "ic_spearman": 0.09789031930103237,
+      "daily_ic_pearson_mean": 0.28086283010090524,
+      "daily_ic_pearson_std": 0.16162586246550625,
+      "daily_ic_spearman_mean": 0.09735940508132845,
+      "daily_ic_spearman_std": 0.06180735638743898,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.009580723417802318,
+      "ic_spearman": 0.023567489402384737,
+      "daily_ic_pearson_mean": 0.004346676529251376,
+      "daily_ic_pearson_std": 0.06154561473022545,
+      "daily_ic_spearman_mean": 0.028187006602634332,
+      "daily_ic_spearman_std": 0.04147361187804711,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.053618946373521874,
+      "ic_spearman": 0.009507258719314193,
+      "daily_ic_pearson_mean": 0.03792212838286822,
+      "daily_ic_pearson_std": 0.05081250156162768,
+      "daily_ic_spearman_mean": 0.012665865371284536,
+      "daily_ic_spearman_std": 0.020068018502233446,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_231833"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 127,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.2629955511674758,
+      "ic_spearman": 0.07211295651310683,
+      "daily_ic_pearson_mean": 0.1811221148631918,
+      "daily_ic_pearson_std": 0.12502636885098223,
+      "daily_ic_spearman_mean": 0.06707659363005433,
+      "daily_ic_spearman_std": 0.047948095868785665,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.005677732406985376,
+      "ic_spearman": 0.009311917641396708,
+      "daily_ic_pearson_mean": 0.004902698136784235,
+      "daily_ic_pearson_std": 0.0592797535869151,
+      "daily_ic_spearman_mean": 0.008291099569628722,
+      "daily_ic_spearman_std": 0.026458784122012087,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.03452580246421024,
+      "ic_spearman": 0.002703165199282798,
+      "daily_ic_pearson_mean": 0.02862822920934395,
+      "daily_ic_pearson_std": 0.0456930436909172,
+      "daily_ic_spearman_mean": -0.0008255845288427936,
+      "daily_ic_spearman_std": 0.02319685759458912,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_232014"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 127,
+      "min_data_in_leaf": 20,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.4170747965661361,
+      "ic_spearman": 0.10935503561128608,
+      "daily_ic_pearson_mean": 0.2956550455815063,
+      "daily_ic_pearson_std": 0.16793924424361914,
+      "daily_ic_spearman_mean": 0.10733115635825752,
+      "daily_ic_spearman_std": 0.06549296120249586,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.014969327181491193,
+      "ic_spearman": 0.019920479683625193,
+      "daily_ic_pearson_mean": 0.004678530034527614,
+      "daily_ic_pearson_std": 0.06898391880430375,
+      "daily_ic_spearman_mean": 0.021356794891225734,
+      "daily_ic_spearman_std": 0.037488953069025895,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.04411648869125617,
+      "ic_spearman": 0.0009318234009747225,
+      "daily_ic_pearson_mean": 0.04124891992375266,
+      "daily_ic_pearson_std": 0.0554029041599071,
+      "daily_ic_spearman_mean": 0.003891155873502545,
+      "daily_ic_spearman_std": 0.024454859422536192,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_232147"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 127,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.04914138522087418,
+      "ic_spearman": 0.037175751591583,
+      "daily_ic_pearson_mean": 0.04184071784335032,
+      "daily_ic_pearson_std": 0.056797409906223506,
+      "daily_ic_spearman_mean": 0.03627365831846664,
+      "daily_ic_spearman_std": 0.03207268481041851,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.037092421031337516,
+      "ic_spearman": 0.024747161958845642,
+      "daily_ic_pearson_mean": 0.03180060940779708,
+      "daily_ic_pearson_std": 0.047675605598211365,
+      "daily_ic_spearman_mean": 0.03016699419669844,
+      "daily_ic_spearman_std": 0.032267168418120766,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": -0.0042573986600454704,
+      "ic_spearman": -0.005559379415769264,
+      "daily_ic_pearson_mean": -0.0026063919926075665,
+      "daily_ic_pearson_std": 0.028649555333742416,
+      "daily_ic_spearman_mean": -0.0031117637849077256,
+      "daily_ic_spearman_std": 0.023905451907239795,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_232313"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 127,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.2,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.3229949289353793,
+      "ic_spearman": 0.16622239547474896,
+      "daily_ic_pearson_mean": 0.2790564286706687,
+      "daily_ic_pearson_std": 0.09460926799256744,
+      "daily_ic_spearman_mean": 0.1621022301034815,
+      "daily_ic_spearman_std": 0.05691862505417194,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.00938890944608755,
+      "ic_spearman": 0.024122284974380973,
+      "daily_ic_pearson_mean": 0.005660400721076737,
+      "daily_ic_pearson_std": 0.06785195321413864,
+      "daily_ic_spearman_mean": 0.02527281017207255,
+      "daily_ic_spearman_std": 0.04236814555203042,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.047155266419808245,
+      "ic_spearman": -0.002111877677820545,
+      "daily_ic_pearson_mean": 0.030695513980123042,
+      "daily_ic_pearson_std": 0.07008255575866307,
+      "daily_ic_spearman_mean": -0.0010035467191853132,
+      "daily_ic_spearman_std": 0.03173448416900331,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_232444"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 127,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.2
+    },
+    "train_ic": {
+      "ic_pearson": 0.05428723712596921,
+      "ic_spearman": 0.03751431281711039,
+      "daily_ic_pearson_mean": 0.04764243059440363,
+      "daily_ic_pearson_std": 0.06073181577939081,
+      "daily_ic_spearman_mean": 0.03597476384236984,
+      "daily_ic_spearman_std": 0.03504801225826865,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.008369941518529921,
+      "ic_spearman": 0.006726176353311416,
+      "daily_ic_pearson_mean": 0.011019808146613519,
+      "daily_ic_pearson_std": 0.04567395781702531,
+      "daily_ic_spearman_mean": 0.008406527222042293,
+      "daily_ic_spearman_std": 0.026098851414848242,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.023368989079832453,
+      "ic_spearman": -0.009837111068343762,
+      "daily_ic_pearson_mean": 0.01925254346477719,
+      "daily_ic_pearson_std": 0.034656565886227904,
+      "daily_ic_spearman_mean": -0.005165916465014503,
+      "daily_ic_spearman_std": 0.017650910226546683,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_232614"
+  },
+  {
+    "params": {
+      "learning_rate": 0.005,
+      "num_leaves": 127,
+      "min_data_in_leaf": 200,
+      "feature_fraction": 0.4,
+      "bagging_fraction": 0.4
+    },
+    "train_ic": {
+      "ic_pearson": 0.3054370750695011,
+      "ic_spearman": 0.15138861529501266,
+      "daily_ic_pearson_mean": 0.25785455436305466,
+      "daily_ic_pearson_std": 0.09230850862658035,
+      "daily_ic_spearman_mean": 0.14731562949394147,
+      "daily_ic_spearman_std": 0.0575195377959864,
+      "n_days": 157.0
+    },
+    "valid_ic": {
+      "ic_pearson": 0.005315114410075035,
+      "ic_spearman": 0.021809302050620583,
+      "daily_ic_pearson_mean": 0.0028286799023114688,
+      "daily_ic_pearson_std": 0.07277143613305834,
+      "daily_ic_spearman_mean": 0.024222422776293582,
+      "daily_ic_spearman_std": 0.04308367552144846,
+      "n_days": 27.0
+    },
+    "test_ic": {
+      "ic_pearson": 0.03454168360146524,
+      "ic_spearman": 0.0003378148039235636,
+      "daily_ic_pearson_mean": 0.02305768750467876,
+      "daily_ic_pearson_std": 0.053801038481528646,
+      "daily_ic_spearman_mean": 0.0005095257950347513,
+      "daily_ic_spearman_std": 0.01935368707189725,
+      "n_days": 12.0
+    },
+    "run_dir": "/Users/minchul/Desktop/\u1109\u1165\u110b\u116e\u11af\u1103\u1162/\u1103\u1175\u11b8\u1100\u1175/crypto_pred/data/datasets/ml/lgbm_grid/20251219_223909_2024-08-01/models/lgbm_y_60m_top30_2024-08-01_2025-01-31__20251219_232745"
+  }
+]
