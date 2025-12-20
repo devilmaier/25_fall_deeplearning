@@ -266,7 +266,17 @@ def _build_dataset_for_split(
     print(f"[ST LOADER] {split_name} df size: {len(df)}")
 
     if export_path is not None:
-        fp = os.path.join(export_path, f"{split_name}_df_{target_col}_top{top_n}_{start_date}_{vali_date}_{feature_num}.h5")
+        # Determine correct date range for filename based on split
+        if split_name == 'train':
+            s_date, e_date = start_date, vali_date
+        elif split_name == 'val':
+            s_date, e_date = vali_date, test_date
+        elif split_name == 'test':
+            s_date, e_date = test_date, end_date
+        else:
+            s_date, e_date = start_date, end_date
+
+        fp = os.path.join(export_path, f"{split_name}_df_{target_col}_top{top_n}_{s_date}_{e_date}_{feature_num}.h5")
         df.to_hdf(fp, key="df", mode="w")
         print(f"[EXPORT] Saved {split_name} df to: {fp}")
 
@@ -461,9 +471,9 @@ def get_spatiotemporal_loaders(
             "vali_date": vali_date,
             "test_date": test_date,
         }
-        with open(os.path.join(export_path, "meta.json"), "w") as f:
+        with open(os.path.join(export_path, f"meta_{target_col}_top{top_n}_{start_date}_{vali_date}_{test_date}_{end_date}_{feature_num}.json"), "w") as f:
             json.dump(meta, f, indent=2)
-        print(f"[EXPORT] Saved meta to: {os.path.join(export_path, 'meta.json')}")
+        print(f"[EXPORT] Saved meta to: {os.path.join(export_path, f'meta_{target_col}_top{top_n}_{start_date}_{vali_date}_{test_date}_{end_date}_{feature_num}.json')}")
 
     # =====================================================================
     # 5. split별로 df 로딩 & Dataset 생성 (각각 따로, full_df 없음)

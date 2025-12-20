@@ -17,10 +17,12 @@ PROJECT_ROOT = Path(__file__).parent.parent
 # Configuration
 # ==========================================
 CONFIG = {
-    'mode': 'classification',  # 'regression' or 'classification'
+    'mode': 'regression',  # 'regression' or 'classification'
     'data_dir': str(PROJECT_ROOT / 'data' / 'xy'),
-    'start_date': '2024-05-01',
-    'end_date': '2024-05-15',
+    'start_date': '2025-02-01',
+    'end_date': '2025-09-14',
+    'vali_date': '2025-08-01',
+    'test_date': '2025-09-01',
     'top_n': 30,
     'num_nodes': 30,    # Number of nodes in graph
     'seq_len': 60,       # Time window size
@@ -30,8 +32,8 @@ CONFIG = {
     'num_transformer_layers': 2,  # Number of Transformer encoder layers
     'num_heads': 4,     # Number of attention heads
     'dropout': 0.2,
-    'batch_size': 16,
-    'epochs': 10,
+    'batch_size': 96,
+    'epochs': 5,
     'lr': 0.001,
     'device': 'cuda' if torch.cuda.is_available() else 'cpu',
     'feature_list': str(PROJECT_ROOT / 'feature_list' / 'y_60m' / 'top30_example_features_166.json'),
@@ -39,7 +41,8 @@ CONFIG = {
     'save_path': str(PROJECT_ROOT / 'best_spatiotemporal_model.pt'),
     'export_path': str(PROJECT_ROOT / 'data' / 'datasets' / 'spatiotfm'),
     'cnn_loss_weight': 0.2,         # Weight for CNN auxiliary loss
-    'transformer_loss_weight': 0.3  # Weight for Transformer auxiliary loss
+    'transformer_loss_weight': 0.3, # Weight for Transformer auxiliary loss
+    'negate_prediction': False      # Option to negate predictions for IC calculation
 }
 
 def compute_stats(loader):
@@ -93,6 +96,8 @@ def train():
         data_dir=CONFIG['data_dir'],
         start_date=CONFIG['start_date'],
         end_date=CONFIG['end_date'],
+        vali_date=CONFIG['vali_date'],
+        test_date=CONFIG['test_date'],
         top_n=CONFIG['top_n'],
         num_nodes=CONFIG['num_nodes'],
         feature_list=CONFIG['feature_list'],
@@ -427,11 +432,18 @@ def train():
         # Calculate Information Coefficient (IC) for regression
         if len(final_preds) > 1:
             final_preds = np.array(final_preds)
+            
+            if CONFIG.get('negate_prediction', False):
+                print("[INFO] Negating predictions for IC calculation (Contrarian Mode)...")
+                final_preds = -final_preds
+            
             targets = np.array(targets)
             ic = np.corrcoef(final_preds, targets)[0, 1]
             print(f"  Information Coefficient (IC): {ic:.4f}")
+            return ic
     
     print(f"{'='*70}")
+    return 0.0
 
 if __name__ == "__main__":
     train()
