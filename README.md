@@ -66,40 +66,167 @@
 
 ## 🧠 모델 (Model)
 
-- **아키텍처**: 
-- **입력 형태**: 
+프로젝트에서는 다양한 딥러닝 및 머신러닝 모델을 구현하여 암호화폐 가격 예측을 수행합니다.
+
+### 1. CNN
+- **아키텍처**: 1D Convolutional Neural Network
+  - Conv1D (32 filters) → MaxPool → Conv1D (64 filters) → MaxPool → Global Average Pooling → Fully Connected
+- **입력 형태**: `(Batch, Time, Features)` - 시계열 데이터를 시간 차원으로 처리
+- **특징**: 
+  - 단일 종목의 시계열 패턴 학습에 특화
+  - 경량 모델로 빠른 학습 및 추론 가능
+  - 입력 정규화를 모델 내부에서 수행
+
+### 2. CryptoMamba
+- **아키텍처**: Mamba-based State Space Model
+  - Temporal Mamba Layers (시간 차원 처리) + Spatial Mamba Layers (종목 간 관계 학습)
+- **입력 형태**: `(Batch, Time, Nodes, Features)` - 다중 종목의 시공간 데이터
 - **특징**:
-    
+  - Mamba SSM을 활용한 효율적인 장기 의존성 학습
+  - 종목 간 상관관계를 공간 차원에서 모델링
+  - 다양한 Loss Function 지원 (MSE, Hybrid, Adaptive, Directional, IC Loss)
+
+### 3. SpatioTemporalTransformer
+- **아키텍처**: 1D-CNN + Transformer Encoder
+  - Temporal Encoder (1D-CNN) → Spatial Encoder (Transformer) → Prediction Head
+- **입력 형태**: `(Batch, Time, Nodes, Features)` - 다중 종목의 시공간 데이터
+- **특징**:
+  - CNN으로 시간적 패턴 추출 후 Transformer로 종목 간 관계 학습
+  - Regression 및 Classification 모드 지원
+  - Auxiliary Loss를 통한 다중 태스크 학습
+
+### 4. LightGBM (LGBM)
+- **아키텍처**: Gradient Boosting Decision Tree
+- **입력 형태**: Tabular Data (Flattened Features)
+- **특징**:
+  - 전통적인 머신러닝 기법으로 빠른 학습 및 해석 가능성
+  - Feature Importance 분석 가능
+  - Grid Search를 통한 하이퍼파라미터 최적화 지원
 
 ---
 
 ## 🚀 사용 방법 (Usage)
 
-### 1. 유니버스 생성
+### 데이터 준비
+
+#### 1. 유니버스 생성
 ```bash
 python universe_builder.py --start_date 2025-02-01 --end_date 2025-03-01 --top_n 50
 ```
-### 2. Feature 데이터(X) 생성
+
+#### 2. Feature 데이터(X) 생성
 ```bash
 python x_generator.py --date 2025-03-01 --top 50
 ```
-### 3. Label 데이터(y) 생성
+
+#### 3. Label 데이터(y) 생성
 ```bash
 python y_generator.py --date 2025-03-01 --top 50
 ```
+
+### 모델 학습
+
+#### CNN 모델
+```bash
+# 기본 학습 모드
+python model/CNN_train.py
+
+# Rolling Window 학습 (5개 윈도우로 반복 학습)
+$env:MODE="rolling"; python model/CNN_train.py
+
+# Hyperparameter Search
+$env:MODE="search"; python model/CNN_train.py
+```
+
+**설정 파일**: `model/CNN_train.py`의 `CONFIG` 딕셔너리에서 날짜 범위, 배치 크기, 학습률 등을 조정할 수 있습니다.
+
+#### CryptoMamba 모델
+```bash
+python model/CryptoMamba_train.py
+```
+
+**설정 파일**: `model/CryptoMamba_train.py`의 `CONFIG`에서 Mamba 레이어 수, hidden dimension, loss function 타입 등을 설정할 수 있습니다.
+
+#### SpatioTemporalTransformer 모델
+```bash
+python model/SpatioTemporal_train.py
+```
+
+**설정 파일**: `model/SpatioTemporal_train.py`의 `CONFIG`에서 Transformer 레이어 수, attention heads, 모드(regression/classification) 등을 설정할 수 있습니다.
+
+#### LightGBM 모델
+```bash
+# 학습 + 평가
+python -m machine_learning.lgbm \
+  --mode train_eval \
+  --train_start 2025-02-01 --train_end 2025-04-30 \
+  --valid_start 2025-05-01 --valid_end 2025-05-14 \
+  --test_start  2025-05-15 --test_end  2025-05-28 \
+  --y_name y_60m --topn 30 \
+  --max_rows 600000 \
+  --num_boost_round 4000 \
+  --early_stopping_rounds 200
+
+# 추론만 수행
+python machine_learning/lgbm.py \
+  --mode infer \
+  --infer_start 2024-03-02 --infer_end 2024-03-05 \
+  --y_name y_60m --topn 30 \
+  --model_path /path/to/model.pkl \
+  --meta_path  /path/to/meta.json \
+  --save_preds
+```
+
+#### LGBM Grid Search
+```bash
+python machine_learning/lgbm_grid.py
+```
+
 ---
+
 ## 📁 디렉토리 구조 (Directory Structure)
 
 ```
 .
 ├── data/
-│   ├── 1m_raw_data/       # 원본 OHLCV 데이터 (.h5)
-│   ├── x/                 # 생성된 Feature 데이터 ($X$)
-│   └── y/                 # 생성된 Label 데이터 ($y$)
-├── universe_builder.py    # 종목 선정 스크립트
-├── preprocessor.py        # 데이터 정제 및 검증 모듈
-├── x_generator.py         # Feature 엔지니어링 ($X$ 생성)
-├── y_generator.py         # 타겟 레이블링 ($y$ 생성)
+│   ├── xy/                        # 통합 Feature + Label 데이터 (날짜별 .h5 파일)
+│   └── datasets/                  # 전처리된 학습용 데이터셋
+│       ├── cnn/                   # CNN 모델용 데이터셋
+│       ├── ml/                    # 머신러닝 모델용 데이터셋
+│       └── spatiotfm/             # SpatioTemporal 모델용 데이터셋
+│
+├── model/                         # 딥러닝 모델 코드
+│   ├── CNN.py                     # CNN 모델 정의
+│   ├── CNN_train.py               # CNN 학습 스크립트
+│   ├── CNN_dataloader.py          # CNN 데이터 로더
+│   ├── CryptoMamba.py             # CryptoMamba 모델 정의
+│   ├── CryptoMamba_train.py       # CryptoMamba 학습 스크립트
+│   ├── CryptoMamba_dataloader.py # CryptoMamba 데이터 로더
+│   ├── SpatioTemporalTransformer.py  # SpatioTemporal 모델 정의
+│   ├── SpatioTemporal_train.py    # SpatioTemporal 학습 스크립트
+│   └── SpatioTemporal_dataloader.py # SpatioTemporal 데이터 로더
+│    
+│
+├── machine_learning/              # 머신러닝 모델 코드
+│   ├── lgbm.py                    # LightGBM 학습/추론 스크립트
+│   ├── lgbm_grid.py               # LightGBM Grid Search
+│   ├── datasets.py                # 데이터셋 빌더
+│   └── linear_model.py            # 선형 모델
+│
+├── models/                        # 학습된 모델 체크포인트 (.pt, .pkl)
+│
+├── results/                       # 실험 결과
+│   ├── cnn/                       # CNN 실험 결과
+│   ├── lgbm/                      # LGBM 실험 결과
+│   └── sttfm/                     # SpatioTemporal 실험 결과
+│
+├── feature_list/                  # Feature 리스트 JSON 파일
+│   └── y_60m/                     # 60분 예측용 feature 리스트
+│
+├── universe_builder.py            # 종목 선정 스크립트
+├── preprocessor.py                # 데이터 정제 및 검증 모듈
+├── x_generator.py                 # Feature 엔지니어링 ($X$ 생성)
+├── y_generator.py                 # 타겟 레이블링 ($y$ 생성)
 └── README.md
 ```
 
