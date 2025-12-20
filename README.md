@@ -218,7 +218,7 @@ python machine_learning/lgbm_grid.py
 ├── results/                       # 실험 결과
 │   ├── cnn/                       # CNN 실험 결과
 │   ├── lgbm/                      # LGBM 실험 결과
-│   └── sttfm/                     # SpatioTemporal 실험 결과
+│   ├── sttfm/                     # SpatioTemporal 실험 결과
 │   └── mamba/                     # CryptoMamba 실험 결과
 │ 
 ├── feature_list/                  # Feature 리스트 JSON 파일
