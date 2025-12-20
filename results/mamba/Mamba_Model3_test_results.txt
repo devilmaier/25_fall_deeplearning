@@ -1,0 +1,200 @@
+======================================================================
+Epoch [1/10]
+  Train Loss: 0.700242
+  Val Loss:   0.970532
+Epoch [2/10]
+  Train Loss: 0.474030
+  Val Loss:   0.980635
+Epoch [3/10]
+  Train Loss: 0.404794
+  Val Loss:   0.987140
+Epoch [4/10]
+  Train Loss: 0.363670
+  Val Loss:   0.991882
+Epoch [5/10]
+  Train Loss: 0.337290
+  Val Loss:   0.995293
+Epoch [6/10]
+  Train Loss: 0.318733
+  Val Loss:   0.993005
+Epoch [7/10]
+  Train Loss: 0.302969
+  Val Loss:   0.979897
+Epoch [8/10]
+  Train Loss: 0.281683
+  Val Loss:   0.992122
+Epoch [9/10]
+  Train Loss: 0.276298
+  Val Loss:   0.988858
+Epoch [10/10]
+  Train Loss: 0.271489
+  Val Loss:   0.986666
+
+[INFO] Evaluating on Test Set...
+[INFO] Loaded best model from epoch 1
+
+======================================================================
+Final Test Results:
+  Test MSE: 0.947200
+  Test IC (Correlation): 0.0775
+======================================================================
+======================================================================
+Epoch [1/10]
+  Train Loss: 0.689124
+  Val Loss:   1.024681
+Epoch [2/10]
+  Train Loss: 0.436328
+  Val Loss:   1.009819
+Epoch [3/10]
+  Train Loss: 0.375800
+  Val Loss:   1.002818
+Epoch [4/10]
+  Train Loss: 0.341336
+  Val Loss:   0.998041
+Epoch [5/10]
+  Train Loss: 0.316821
+  Val Loss:   1.011602
+Epoch [6/10]
+  Train Loss: 0.302276
+  Val Loss:   1.007132
+Epoch [7/10]
+  Train Loss: 0.288776
+  Val Loss:   1.014690
+Epoch [8/10]
+  Train Loss: 0.278101
+  Val Loss:   1.007390
+Epoch [9/10]
+  Train Loss: 0.269445
+  Val Loss:   1.011579
+Epoch [10/10]
+  Train Loss: 0.261767
+  Val Loss:   1.007605
+
+[INFO] Evaluating on Test Set...
+[INFO] Loaded best model from epoch 4
+
+======================================================================
+Final Test Results:
+  Test MSE: 0.963573
+  Test IC (Correlation): 0.0405
+======================================================================
+======================================================================
+Epoch [1/10]
+  Train Loss: 0.689155
+  Val Loss:   0.982486
+Epoch [2/10]
+  Train Loss: 0.414396
+  Val Loss:   0.981287
+Epoch [3/10]
+  Train Loss: 0.351409
+  Val Loss:   0.985768
+Epoch [4/10]
+  Train Loss: 0.321183
+  Val Loss:   0.990104
+Epoch [5/10]
+  Train Loss: 0.299870
+  Val Loss:   0.996829
+Epoch [6/10]
+  Train Loss: 0.286352
+  Val Loss:   1.011625
+Epoch [7/10]
+  Train Loss: 0.276076
+  Val Loss:   1.010822
+Epoch [8/10]
+  Train Loss: 0.266849
+  Val Loss:   1.013745
+Epoch [9/10]
+  Train Loss: 0.249072
+  Val Loss:   1.014661
+Epoch [10/10]
+  Train Loss: 0.244112
+  Val Loss:   1.015099
+
+[INFO] Evaluating on Test Set...
+[INFO] Loaded best model from epoch 2
+
+======================================================================
+Final Test Results:
+  Test MSE: 0.999013
+  Test IC (Correlation): -0.0231
+======================================================================
+======================================================================
+Epoch [1/10]
+  Train Loss: 0.689893
+  Val Loss:   0.981519
+Epoch [2/10]
+  Train Loss: 0.419102
+  Val Loss:   0.989620
+Epoch [3/10]
+  Train Loss: 0.355692
+  Val Loss:   0.985584
+Epoch [4/10]
+  Train Loss: 0.322949
+  Val Loss:   0.983498
+Epoch [5/10]
+  Train Loss: 0.302736
+  Val Loss:   0.991623
+Epoch [6/10]
+  Train Loss: 0.289723
+  Val Loss:   0.986261
+Epoch [7/10]
+  Train Loss: 0.277006
+  Val Loss:   0.993980
+Epoch [8/10]
+  Train Loss: 0.257802
+  Val Loss:   0.992362
+Epoch [9/10]
+  Train Loss: 0.253901
+  Val Loss:   0.996713
+Epoch [10/10]
+  Train Loss: 0.248814
+  Val Loss:   0.995691
+
+[INFO] Evaluating on Test Set...
+[INFO] Loaded best model from epoch 1
+
+======================================================================
+Final Test Results:
+  Test MSE: 1.021325
+  Test IC (Correlation): -0.1030
+======================================================================
+======================================================================
+Epoch [1/10]
+  Train Loss: 0.680295
+  Val Loss:   0.967881
+Epoch [2/10]
+  Train Loss: 0.416844
+  Val Loss:   0.962624
+Epoch [3/10]
+  Train Loss: 0.354137
+  Val Loss:   0.981303
+Epoch [4/10]
+  Train Loss: 0.316719
+  Val Loss:   0.967158
+Epoch [5/10]
+  Train Loss: 0.294233
+  Val Loss:   0.976292
+Epoch [6/10]
+  Train Loss: 0.279202
+  Val Loss:   0.980507
+Epoch [7/10]
+  Train Loss: 0.267319
+  Val Loss:   0.980592
+Epoch [8/10]
+  Train Loss: 0.258450
+  Val Loss:   0.987438
+Epoch [9/10]
+  Train Loss: 0.239945
+  Val Loss:   0.992845
+Epoch [10/10]
+  Train Loss: 0.236025
+  Val Loss:   0.989167
+
+[INFO] Evaluating on Test Set...
+[INFO] Loaded best model from epoch 2
+
+======================================================================
+Final Test Results:
+  Test MSE: 0.968359
+  Test IC (Correlation): 0.0731
+======================================================================
