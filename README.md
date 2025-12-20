@@ -2,6 +2,32 @@
 
 ## 📊 데이터셋 (Dataset)
 
+### 0. 원시 데이터 수집 (`raw_data_fetcher.py`)
+- **기능**: Binance USDT-M PERPETUAL 선물 거래소에서 원시 데이터를 다운로드합니다.
+- **수집 데이터**:
+  - **1분봉 Klines**: 시가/고가/저가/종가, 거래량, 거래 건수, Taker 매수/매도량
+  - **Premium Index Klines**: 현물 대비 선물 가격 프리미엄 (1분 단위)
+  - **5분 Metrics**: 미결제약정(OI), 롱/숏 비율, 평균 거래 금액 등 (1분 단위로 backfill)
+- **처리 방식**: 
+  - 병렬 처리로 여러 심볼을 동시에 다운로드 (기본값: CPU 코어 수)
+  - 각 심볼별로 1일치 데이터(1440행) 검증
+  - 날짜별로 모든 심볼의 데이터를 하나의 HDF5 파일로 저장 (`data/1m_raw_data/{date}.h5`)
+- **사용법**:
+  ```bash
+  python raw_data_fetcher.py --start_date 2025-02-01 --end_date 2025-02-07 --workers 16
+  ```
+
+### 0.5. 데이터 전처리 (`preprocessor.py`)
+- **기능**: 다운로드된 원시 데이터의 품질을 검증하고 정제합니다.
+- **검증 항목**:
+  - **심볼별 행 수 검증**: 각 심볼이 정확히 1440행(1일치 1분봉)을 갖는지 확인
+  - **NaN 값 검사**: 필수 컬럼에 NaN이 존재하는지 확인
+  - **자동 필터링**: NaN이 30개 이상인 심볼 또는 USD로 시작하는 스테이블코인 자동 제외
+- **정제 방법**:
+  - **Forward Fill**: 심볼별로 그룹화하여 앞 방향으로 NaN 값 채우기
+  - **Backward Fill**: 앞 방향 채우기 후에도 남은 NaN은 뒤 방향으로 채우기
+- **출력**: 문제가 있는 심볼 목록을 `banned_symbols.json`에 저장하여 후속 단계에서 자동 제외
+
 ### 1. 유니버스 선정 (`universe_builder.py`)
 - **기준**: USDT 기준 거래대금(Quote Volume) 상위 N개 종목 (예: Top 50).
 - **필터링**: 데이터 누락이 심하거나 특정 조건(예: 스테이블 코인 등)에 해당하는 종목은 자동으로 제외됩니다.
@@ -62,6 +88,28 @@
 - **예측 구간**: 1분, 5분, 15분, 30분, 60분 뒤의 초과 수익.
 - **목표**: 향후 $w$분 동안 시장 평균보다 더 많이 오를(혹은 덜 떨어질) 종목을 식별.
 
+### 4. 통합 데이터셋 생성 (`xy_range_dump.py`)
+- **기능**: 날짜 범위에 대해 Feature(X)와 Label(Y)를 병렬로 생성하고 통합합니다.
+- **처리 과정**:
+  1. 지정된 날짜 범위의 각 날짜에 대해 `x_generator.py`와 `y_generator.py`를 병렬로 실행
+  2. 생성된 X와 Y 데이터를 `symbol`과 `start_time_ms` 기준으로 병합
+  3. 각 날짜별로 통합된 데이터셋을 HDF5 파일로 저장 (`data/xy/{date}_xy_top{top}.h5`)
+- **특징**:
+  - **병렬 처리**: 여러 날짜를 동시에 처리하여 대량 데이터 생성 시간 단축
+  - **다중 예측 구간**: 여러 시간 윈도우(1분, 5분, 15분, 30분, 60분 등)의 레이블을 한 번에 생성
+  - **자동 유니버스 로딩**: `universe_builder.py`에서 생성한 유니버스 파일을 자동으로 참조
+- **사용법**:
+  ```bash
+  python xy_range_dump.py \
+    --start_date 2025-02-01 \
+    --end_date 2025-02-07 \
+    --top 50 \
+    --data_dir data/1m_raw_data \
+    --out_dir data/xy \
+    --windows 1,5,15,30,60 \
+    --max_workers 12
+  ```
+
 ---
 
 ## 🧠 모델 (Model)
@@ -100,14 +148,33 @@
 - **입력 형태**: Tabular Data (Flattened Features)
 - **특징**:
   - 전통적인 머신러닝 기법으로 빠른 학습 및 해석 가능성
-  - Feature Importance 분석 가능
   - Grid Search를 통한 하이퍼파라미터 최적화 지원
+- *GBDT로서의 장점*:
+  - **비선형 관계 학습**: 결정 트리 기반 앙상블로 복잡한 비선형 패턴을 효과적으로 학습
+  - **Feature 상호작용 자동 탐지**: 여러 Feature 간의 상호작용을 자동으로 학습하여 시장 미시구조의 복합적 관계를 포착
+  - **이상치 강건성**: 트리 기반 모델의 특성상 이상치에 덜 민감하여 암호화폐 시장의 급격한 변동에도 안정적
+  - **결측치 처리**: 내부적으로 결측치를 자동 처리하여 데이터 전처리 부담 감소
+  - **과적합 방지**: Early Stopping, 정규화 파라미터 등을 통해 과적합을 효과적으로 제어
+  - **빠른 추론 속도**: 학습된 모델의 추론이 매우 빠르며 실시간 예측에 적합
 
 ---
 
 ## 🚀 사용 방법 (Usage)
 
 ### 데이터 준비
+
+#### 0. 원시 데이터 수집
+```bash
+python raw_data_fetcher.py --start_date 2025-02-01 --end_date 2025-02-07 --workers 16
+```
+- Binance에서 1분봉, Premium Index, Metrics 데이터를 다운로드하여 `data/1m_raw_data/{date}.h5`에 저장합니다.
+
+#### 0.5. 데이터 전처리 (선택사항)
+```bash
+python -c "from preprocessor import ban_symbols_with_nan; ban_symbols_with_nan('2025-02-01')"
+```
+- 특정 날짜의 데이터 품질을 검증하고 문제가 있는 심볼을 `banned_symbols.json`에 저장합니다.
+- `x_generator.py`와 `y_generator.py`에서 자동으로 제외됩니다.
 
 #### 1. 유니버스 생성
 ```bash
@@ -123,6 +190,20 @@ python x_generator.py --date 2025-03-01 --top 50
 ```bash
 python y_generator.py --date 2025-03-01 --top 50
 ```
+
+#### 4. 통합 데이터셋 생성 (권장)
+```bash
+python xy_range_dump.py \
+  --start_date 2025-02-01 \
+  --end_date 2025-02-07 \
+  --top 50 \
+  --data_dir data/1m_raw_data \
+  --out_dir data/xy \
+  --windows 1,5,15,30,60 \
+  --max_workers 12
+```
+- 여러 날짜에 대해 X와 Y를 병렬로 생성하고 통합합니다.
+- 개별 날짜별 실행(2, 3번) 대신 범위 단위 일괄 처리가 가능합니다.
 
 ### 모델 학습
 
@@ -184,11 +265,97 @@ python machine_learning/lgbm_grid.py
 
 ---
 
+## 📋 설정 파일 (Configuration Files)
+
+프로젝트에서는 데이터 품질 관리, Feature 선택, 학습 설정을 위한 여러 JSON 설정 파일을 사용합니다.
+
+### 1. Universe JSON 파일 (`top{topn}_universe.json`)
+- **용도**: 날짜별로 학습 대상이 되는 종목 리스트를 저장합니다.
+- **생성**: `universe_builder.py` 실행 시 자동 생성
+- **형식**: 
+  ```json
+  {
+    "2025-02-01": ["BTCUSDT", "ETHUSDT", "SOLUSDT", ...],
+    "2025-02-02": ["BTCUSDT", "ETHUSDT", "BNBUSDT", ...],
+    ...
+  }
+  ```
+- **사용처**: 
+  - `x_generator.py`, `y_generator.py`: 특정 날짜의 유니버스 조회
+  - `xy_range_dump.py`: 날짜 범위에 대한 유니버스 로딩
+- **특징**: 
+  - USDT 기준 거래대금 상위 N개 종목으로 구성
+  - `banned_symbols.json`에 등록된 심볼은 자동 제외
+
+### 2. Banned Symbols JSON (`banned_symbols.json`)
+- **용도**: 날짜별로 데이터 품질 문제로 제외할 심볼 목록을 저장합니다.
+- **생성**: `preprocessor.py`의 `ban_symbols_with_nan()` 함수로 자동 생성
+- **형식**:
+  ```json
+  {
+    "2025-02-01": ["CVCUSDT", "USDCUSDT"],
+    "2025-02-02": ["BTCDOMUSDT", "CVCUSDT"],
+    ...
+  }
+  ```
+- **제외 기준**:
+  - NaN 값이 30개 이상인 심볼
+  - USD로 시작하는 스테이블코인 (자동 제외)
+- **사용처**: 
+  - `universe_builder.py`: 유니버스 선정 시 자동 제외
+  - `x_generator.py`, `y_generator.py`: 해당 날짜의 제외 심볼 필터링
+
+### 3. Global Ban Dates JSON (`global_ban_dates.json`)
+- **용도**: 전체 학습 과정에서 제외할 날짜들을 저장합니다.
+- **형식**:
+  ```json
+  {
+    "missing_dates": ["2024-03-31", "2024-04-01", ...],
+    "nan_dates": {
+      "2024-02-16": ["x_15m_OI_P_Corr", "x_30m_OI_P_Corr", ...],
+      "2024-02-18": ["x_1m_AvgTrade", "x_1m_NetTaker", ...],
+      ...
+    }
+  }
+  ```
+- **구성 요소**:
+  - **`missing_dates`**: 데이터 파일이 없거나 손상된 날짜 리스트
+  - **`nan_dates`**: 특정 Feature에 NaN이 많아 해당 날짜의 특정 Feature만 제외하고 싶을 때 사용
+- **사용처**: 
+  - `machine_learning/datasets.py`: 날짜 범위 생성 시 자동 제외
+  - 딥러닝 모델의 DataLoader (`CNN_dataloader.py`, `CryptoMamba_dataloader.py`, `SpatioTemporal_dataloader.py`): 학습 데이터 로딩 시 제외
+- **특징**: 
+  - `missing_dates`에 포함된 날짜는 완전히 제외
+  - `nan_dates`에 포함된 날짜는 해당 Feature만 0으로 채워서 사용 가능
+
+### 4. Feature List JSON (`feature_list/{y_name}/top{topn}_example_features_{num}.json`)
+- **용도**: 모델 학습에 사용할 Feature 리스트를 저장합니다.
+- **경로**: `feature_list/{y_name}/top{topn}_example_features_{num}.json`
+  - 예: `feature_list/y_60m/top30_example_features_166.json`
+- **형식**:
+  ```json
+  ["x_1m_O2C_neut", "x_1m_H2C_neut", "x_5m_RVol_neut", ...]
+  ```
+  또는 문자열로 인코딩된 형태도 지원:
+  ```json
+  "['x_1m_O2C_neut', 'x_1m_H2C_neut', ...]"
+  ```
+- **사용처**: 
+  - `machine_learning/datasets.py`: LightGBM 학습 시 Feature 선택
+  - 딥러닝 모델 DataLoader: Feature 필터링
+- **특징**: 
+  - Feature Selection 결과를 저장하여 재현성 확보
+  - `y_name` (예: `y_60m`)과 `topn` (예: 30)에 따라 다른 Feature 리스트 사용 가능
+  - 파일이 없으면 자동으로 모든 `_neut`로 끝나는 Feature를 사용
+
+---
+
 ## 📁 디렉토리 구조 (Directory Structure)
 
 ```
 .
 ├── data/
+│   ├── 1m_raw_data/               # 원시 1분봉 데이터 (raw_data_fetcher.py로 생성)
 │   ├── xy/                        # 통합 Feature + Label 데이터 (날짜별 .h5 파일)
 │   └── datasets/                  # 전처리된 학습용 데이터셋
 │       ├── cnn/                   # CNN 모델용 데이터셋
@@ -216,18 +383,27 @@ python machine_learning/lgbm_grid.py
 ├── models/                        # 학습된 모델 체크포인트 (.pt, .pkl)
 │
 ├── results/                       # 실험 결과
-│   ├── cnn/                       # CNN 실험 결과
-│   ├── lgbm/                      # LGBM 실험 결과
-│   ├── sttfm/                     # SpatioTemporal 실험 결과
-│   └── mamba/                     # CryptoMamba 실험 결과
+│   ├── cnn/                       # CNN 실험 결과 (IC, 성능 지표 등)
+│   ├── lgbm/                      # LGBM 실험 결과 (IC, 성능 지표 등)
+│   ├── sttfm/                     # SpatioTemporal 실험 결과 (IC, 성능 지표 등)
+│   └── mamba/                     # CryptoMamba 실험 결과 (IC, 성능 지표 등)
+│
+│   각 모델별로 Information Coefficient (IC), 예측 성능 지표 등의 실험 결과를 정리하여 저장합니다.
 │ 
 ├── feature_list/                  # Feature 리스트 JSON 파일
 │   └── y_60m/                     # 60분 예측용 feature 리스트
+│       └── top{topn}_example_features_{num}.json
 │
-├── universe_builder.py            # 종목 선정 스크립트
+├── top{topn}_universe.json        # 날짜별 유니버스 종목 리스트 (예: top30_universe.json, top50_universe.json)
+├── banned_symbols.json             # 날짜별 제외 심볼 목록
+├── global_ban_dates.json           # 전체 제외 날짜 및 Feature별 NaN 날짜
+│
+├── raw_data_fetcher.py            # 원시 데이터 수집 스크립트 (Binance API)
 ├── preprocessor.py                # 데이터 정제 및 검증 모듈
+├── universe_builder.py            # 종목 선정 스크립트
 ├── x_generator.py                 # Feature 엔지니어링 ($X$ 생성)
 ├── y_generator.py                 # 타겟 레이블링 ($y$ 생성)
+├── xy_range_dump.py               # 통합 데이터셋 생성 스크립트 (X+Y 병합)
 └── README.md
 ```
 
