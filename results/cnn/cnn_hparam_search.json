@@ -1,0 +1,162 @@
+[
+  {
+    "run_index": 1,
+    "hyperparams": {
+      "lr": 0.0001,
+      "batch_size": 1024,
+      "epochs": 5,
+      "num_samples": 600000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp600000_seq60",
+    "metrics": {
+      "best_val_loss": 0.00060153830064414,
+      "final_val_loss": 0.00060153830064414,
+      "test_loss": 0.0003639586590709268,
+      "test_corr": -0.04139303493304995
+    }
+  },
+  {
+    "run_index": 2,
+    "hyperparams": {
+      "lr": 0.0003,
+      "batch_size": 256,
+      "epochs": 5,
+      "num_samples": 300000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp300000_seq60",
+    "metrics": {
+      "best_val_loss": 0.00038675143688718405,
+      "final_val_loss": 0.00038675143688718405,
+      "test_loss": 0.0002459050111215417,
+      "test_corr": 0.0239093835998059
+    }
+  },
+  {
+    "run_index": 3,
+    "hyperparams": {
+      "lr": 0.0001,
+      "batch_size": 512,
+      "epochs": 5,
+      "num_samples": 600000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp600000_seq60",
+    "metrics": {
+      "best_val_loss": 0.00043412648744856373,
+      "final_val_loss": 0.00043412648744856373,
+      "test_loss": 0.00024647925565592966,
+      "test_corr": 0.004220199257732151
+    }
+  },
+  {
+    "run_index": 4,
+    "hyperparams": {
+      "lr": 0.001,
+      "batch_size": 256,
+      "epochs": 10,
+      "num_samples": 600000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp600000_seq60",
+    "metrics": {
+      "best_val_loss": 0.0003116603432179563,
+      "final_val_loss": 0.00032537128107531604,
+      "test_loss": 0.00022655514722803256,
+      "test_corr": 0.014500883522226954
+    }
+  },
+  {
+    "run_index": 5,
+    "hyperparams": {
+      "lr": 0.001,
+      "batch_size": 1024,
+      "epochs": 5,
+      "num_samples": 300000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp300000_seq60",
+    "metrics": {
+      "best_val_loss": 0.00040966177677491785,
+      "final_val_loss": 0.00040966177677491785,
+      "test_loss": 0.00025732906425623005,
+      "test_corr": -0.0024770467979718437
+    }
+  },
+  {
+    "run_index": 6,
+    "hyperparams": {
+      "lr": 0.0003,
+      "batch_size": 512,
+      "epochs": 10,
+      "num_samples": 600000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp600000_seq60",
+    "metrics": {
+      "best_val_loss": 0.00033880447626051145,
+      "final_val_loss": 0.00034668798223503813,
+      "test_loss": 0.00023249803616003797,
+      "test_corr": 0.051011415930776016
+    }
+  },
+  {
+    "run_index": 7,
+    "hyperparams": {
+      "lr": 0.001,
+      "batch_size": 512,
+      "epochs": 10,
+      "num_samples": 300000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp300000_seq60",
+    "metrics": {
+      "best_val_loss": 0.0003269088536962774,
+      "final_val_loss": 0.0003269088536962774,
+      "test_loss": 0.00023313895278727356,
+      "test_corr": 0.014674743725726348
+    }
+  },
+  {
+    "run_index": 8,
+    "hyperparams": {
+      "lr": 0.001,
+      "batch_size": 256,
+      "epochs": 5,
+      "num_samples": 600000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp600000_seq60",
+    "metrics": {
+      "best_val_loss": 0.00031220833081975025,
+      "final_val_loss": 0.00031220833081975025,
+      "test_loss": 0.0002272420663238392,
+      "test_corr": 0.02067862573930452
+    }
+  },
+  {
+    "run_index": 9,
+    "hyperparams": {
+      "lr": 0.0003,
+      "batch_size": 1024,
+      "epochs": 10,
+      "num_samples": 300000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp300000_seq60",
+    "metrics": {
+      "best_val_loss": 0.0005454644364880085,
+      "final_val_loss": 0.0005454644364880085,
+      "test_loss": 0.0002600959227346832,
+      "test_corr": -0.018518226877833152
+    }
+  },
+  {
+    "run_index": 10,
+    "hyperparams": {
+      "lr": 0.001,
+      "batch_size": 256,
+      "epochs": 10,
+      "num_samples": 300000
+    },
+    "export_path_used": "C:\\Users\\\ubc15\ucc2c\uc601\\Desktop\\deeplearning_project\\25_fall_deeplearning\\data\\datasets\\cnn_tuning_2024-10-01_2025-05-14_samp300000_seq60",
+    "metrics": {
+      "best_val_loss": 0.00031097197955443675,
+      "final_val_loss": 0.0003115814000510017,
+      "test_loss": 0.0002290962762219988,
+      "test_corr": -0.04437742057408287
+    }
+  }
+]
